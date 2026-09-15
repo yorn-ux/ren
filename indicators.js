@@ -1,8 +1,15 @@
-
 require('dotenv').config();
+const { waitForSlot } = require('./rateLimiter');
+const { isBinanceSupported, getBinanceCandles } = require('./binanceSource');
 
 async function getHistory(pair = 'EUR/USD', interval = '1h', outputsize = 50) {
-  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(pair)}&interval=${interval}&outputsize=${outputsize}&exchange=Binance&apikey=${process.env.TWELVEDATA_API_KEY}`;
+  if (isBinanceSupported(pair)) {
+    const candles = await getBinanceCandles(pair, interval, outputsize);
+    return candles.map(c => c.close);
+  }
+
+  await waitForSlot();
+  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(pair)}&interval=${interval}&outputsize=${outputsize}&apikey=${process.env.TWELVEDATA_API_KEY}`;
   const response = await fetch(url);
   const data = await response.json();
   if (data.status === 'error') throw new Error(data.message);
@@ -10,7 +17,12 @@ async function getHistory(pair = 'EUR/USD', interval = '1h', outputsize = 50) {
 }
 
 async function getCandles(pair = 'EUR/USD', interval = '1h', outputsize = 50) {
-  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(pair)}&interval=${interval}&outputsize=${outputsize}&exchange=Binance&apikey=${process.env.TWELVEDATA_API_KEY}`;
+  if (isBinanceSupported(pair)) {
+    return await getBinanceCandles(pair, interval, outputsize);
+  }
+
+  await waitForSlot();
+  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(pair)}&interval=${interval}&outputsize=${outputsize}&apikey=${process.env.TWELVEDATA_API_KEY}`;
   const response = await fetch(url);
   const data = await response.json();
   if (data.status === 'error') throw new Error(data.message);

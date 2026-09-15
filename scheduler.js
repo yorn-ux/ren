@@ -1,41 +1,56 @@
-const { analyzeAsset } = require('./brain');
+const { getTradeRecommendation } = require('./brain');
+const { checkOpenTrades } = require('./outcomes');
 const { speak } = require('./voice');
 const watchlist = require('./watchlist');
 
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 async function runScan() {
   console.log(`\n--- Scan started: ${new Date().toLocaleTimeString()} ---`);
+
+  try {
+    const outcomes = await checkOpenTrades();
+    if (outcomes.length > 0) {
+      const summary = outcomes.map(o => `${o.name} ${o.ratio} ${o.outcome === 'hit_tp' ? 'hit target' : 'hit stop'}`).join('. ');
+      console.log('Outcomes:', summary);
+      speak(`Update on past calls. ${summary}.`);
+    } else {
+      console.log('No trades closed this scan.');
+    }
+  } catch (err) {
+    console.log('Outcome check failed:', err.message);
+  }
+
   const actionable = [];
 
   for (const asset of watchlist) {
     try {
-      const suggestion = await analyzeAsset(asset.symbol, asset.name);
-      const direction = suggestion.match(/\*\*Direction:\*\*\s*(\w+)/i);
-      const call = direction ? direction[1].toUpperCase() : 'UNKNOWN';
-
-      console.log(`${asset.name}: ${call}`);
-
-      if (call === 'BUY' || call === 'SELL') {
-        actionable.push(`${asset.name}: ${call}`);
+      const result = await getTradeRecommendation(asset.symbol, asset.name);
+      if (result.hasSetup) {
+        console.log(`${asset.name}: ${result.ratio} setup, confidence ${result.confidence}`);
+        if (result.confidence === 'high' || result.confidence === 'medium') {
+          actionable.push(`${asset.name}: ${result.ratio} setup, entry ${result.entry}, confidence ${result.confidence}`);
+        }
+      } else {
+        console.log(`${asset.name}: no setup detected`);
       }
     } catch (err) {
       console.log(`${asset.name}: failed (${err.message})`);
     }
-    await delay(8000); // respect free-tier rate limits
   }
 
   if (actionable.length > 0) {
-    speak(`Scan complete. ${actionable.length} actionable signals: ${actionable.join(', ')}. Check your dashboard for details.`);
+    speak(`Scan complete. ${actionable.length} setups worth a look: ${actionable.join('. ')}. That's the read. Your call.`);
   } else {
-    console.log('No actionable signals this scan. Staying quiet.');
+    console.log('No actionable setups this scan. Staying quiet.');
   }
+
+  console.log(`--- Scan finished: ${new Date().toLocaleTimeString()} ---`);
 }
 
-// Run immediately, then every hour
-runScan();
-setInterval(runScan, 60 * 60 * 1000);
+function startScheduler() {
+  runScan();
+  setInterval(runScan, 60 * 60 * 1000);
+  console.log('Scheduler running. Ren will scan every hour: checking past trade outcomes, then scouting new setups.');
+}
 
-console.log('Scheduler running. Ren will scan every hour and speak up only on BUY/SELL signals.');
+module.exports = { runScan, startScheduler };
+
