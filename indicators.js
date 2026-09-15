@@ -1,7 +1,8 @@
+
 require('dotenv').config();
 
 async function getHistory(pair = 'EUR/USD', interval = '1h', outputsize = 50) {
-  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(pair)}&interval=${interval}&outputsize=${outputsize}&apikey=${process.env.TWELVEDATA_API_KEY}`;
+  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(pair)}&interval=${interval}&outputsize=${outputsize}&exchange=Binance&apikey=${process.env.TWELVEDATA_API_KEY}`;
   const response = await fetch(url);
   const data = await response.json();
   if (data.status === 'error') throw new Error(data.message);
@@ -9,7 +10,7 @@ async function getHistory(pair = 'EUR/USD', interval = '1h', outputsize = 50) {
 }
 
 async function getCandles(pair = 'EUR/USD', interval = '1h', outputsize = 50) {
-  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(pair)}&interval=${interval}&outputsize=${outputsize}&apikey=${process.env.TWELVEDATA_API_KEY}`;
+  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(pair)}&interval=${interval}&outputsize=${outputsize}&exchange=Binance&apikey=${process.env.TWELVEDATA_API_KEY}`;
   const response = await fetch(url);
   const data = await response.json();
   if (data.status === 'error') throw new Error(data.message);
@@ -18,6 +19,7 @@ async function getCandles(pair = 'EUR/USD', interval = '1h', outputsize = 50) {
     low: parseFloat(v.low),
     close: parseFloat(v.close),
     open: parseFloat(v.open),
+    volume: v.volume ? parseFloat(v.volume) : 0,
   })).reverse();
 }
 
