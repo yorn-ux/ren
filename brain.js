@@ -2,6 +2,7 @@ require('dotenv').config();
 const { getActiveMode } = require('./modes');
 const { getIndicators } = require('./indicators');
 const { getZoneAnalysis } = require('./zones');
+const { getSupportResistance } = require('./support_resistance');
 const { speak } = require('./voice');
 const db = require('./db');
 const watchlist = require('./watchlist');
@@ -13,7 +14,7 @@ TONE:
 - No generic disclaimers. Trust the user understands suggestions are not directives.
 
 RULES:
-- You will be given REAL calculated indicators and zone data. These are the ONLY numbers you know.
+- You will be given REAL calculated indicators, zone data, and support/resistance levels. These are the ONLY numbers you know.
 - You have NO access to news, economic calendar, or any data beyond what's given to you.
 - NEVER invent dates, events, or any data point not explicitly provided.
 
@@ -32,7 +33,7 @@ async function callGroq(systemPrompt, userPrompt) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      max_tokens: 600,
+      max_tokens: 700,
     }),
   });
   const data = await response.json();
@@ -40,14 +41,13 @@ async function callGroq(systemPrompt, userPrompt) {
   return data.choices[0].message.content;
 }
 
-// Basic directional analysis (existing feature, unchanged)
 async function analyzeAsset(symbol, name) {
   const ind = await getIndicators(symbol);
   const dataContext = `Asset: ${name} (${symbol})
 Current price: ${ind.price}
 SMA20: ${ind.sma20.toFixed(4)}
 SMA50: ${ind.sma50 ? ind.sma50.toFixed(4) : 'not enough data'}
-RSI14: ${ind.rsi14.toFixed(2)}`;
+RSI14: ${ind.rsi14 ? ind.rsi14.toFixed(2) : 'not enough data'}`;
 
   const suggestion = await callGroq(
     REN_PERSONA + `\n\nGive a clear direction: BUY, SELL, or HOLD. State confidence: high, medium, or low. Base reasoning ONLY on the indicators given.`,
@@ -61,7 +61,6 @@ RSI14: ${ind.rsi14.toFixed(2)}`;
   return suggestion;
 }
 
-// NEW: full trade plan with Ren judging the best ratio based on confluence
 async function getTradeRecommendation(symbol, name = symbol) {
   const zone = await getZoneAnalysis(symbol);
 
@@ -69,7 +68,11 @@ async function getTradeRecommendation(symbol, name = symbol) {
     return zone.message;
   }
 
+  const sr = await getSupportResistance(symbol);
+
   const dataContext = `Asset: ${name} (${symbol})
+
+ZONE DATA:
 Zone type: ${zone.zoneType} (${zone.direction} setup)
 Zone range: ${zone.zoneLow.toFixed(5)} - ${zone.zoneHigh.toFixed(5)}
 Current price: ${zone.currentPrice}
@@ -78,29 +81,35 @@ Stop loss: ${zone.stopLoss.toFixed(5)}
 Risk (entry to stop): ${zone.risk.toFixed(5)}
 Target at 1:2 ratio: ${zone.target2R.toFixed(5)}
 Target at 1:3 ratio: ${zone.target3R.toFixed(5)}
-Other supply/demand zones sitting between entry and the 1:3 target: ${zone.obstacleCount}
-RSI14: ${zone.indicators.rsi14.toFixed(2)}
+Other supply/demand zones between entry and 1:3 target: ${zone.obstacleCount}
+
+INDICATORS:
+RSI14: ${zone.indicators.rsi14 ? zone.indicators.rsi14.toFixed(2) : 'not enough data'}
 SMA20: ${zone.indicators.sma20.toFixed(4)}
-SMA50: ${zone.indicators.sma50 ? zone.indicators.sma50.toFixed(4) : 'not enough data'}`;
+SMA50: ${zone.indicators.sma50 ? zone.indicators.sma50.toFixed(4) : 'not enough data'}
+
+SUPPORT/RESISTANCE:
+Nearest resistance: ${sr.nearestResistance ? `${sr.nearestResistance.level.toFixed(5)} (tested ${sr.nearestResistance.touches} times)` : 'none detected'}
+Nearest support: ${sr.nearestSupport ? `${sr.nearestSupport.level.toFixed(5)} (tested ${sr.nearestSupport.touches} times)` : 'none detected'}`;
 
   const systemPrompt = REN_PERSONA + `
 
-YOUR TASK: Decide whether the 1:2 or 1:3 risk-reward ratio is more realistic for THIS specific setup, based on confluence — not a default preference for the bigger number.
+YOUR TASK: Decide whether the 1:2 or 1:3 risk-reward ratio is more realistic for THIS specific setup, based on full confluence.
 
-Consider:
-- If other zones sit between entry and the 1:3 target, price likely reacts there first — favor 1:2.
-- If RSI shows room to run (not already exhausted in the trade direction) and trend (price vs SMA20/SMA50) aligns with the trade direction, 1:3 has more support.
-- If the trade is counter-trend or RSI is already extreme in the trade's favor, favor 1:2 as the safer, more probable target.
+Consider ALL of these together:
+- If other supply/demand zones sit between entry and the 1:3 target, favor 1:2.
+- If a strong support/resistance level (tested 3+ times) sits between entry and the 1:3 target blocking the move, favor 1:2. If the path is clear, 1:3 has more support.
+- If RSI shows room to run and trend (price vs SMA20/SMA50) aligns with the trade direction, 1:3 has more support.
+- If counter-trend or RSI already extreme in the trade's favor, favor 1:2.
 
 Give:
-1. Your chosen ratio (1:2 or 1:3) and why, in 2-3 sentences
+1. Your chosen ratio (1:2 or 1:3) and the 2-3 key factors that drove the decision (mention zones, S/R, RSI/trend specifically)
 2. Final entry, stop loss, and take profit numbers
 3. Confidence: high, medium, or low`;
 
   const recommendation = await callGroq(systemPrompt, `Here is the real setup data:\n${dataContext}\n\nAnalyze and give your final trade recommendation.`);
 
-  // Log which ratio Ren actually chose by checking its response text
-  const chosenRatio = recommendation.includes('1:3') && !recommendation.includes('1:2 ratio is more realistic') ? '1:3' : '1:2';
+  const chosenRatio = recommendation.match(/1:3.{0,30}(chosen|favor|recommend)/i) ? '1:3' : '1:2';
   const finalTarget = chosenRatio === '1:3' ? zone.target3R : zone.target2R;
 
   db.prepare(`INSERT INTO trades (symbol, name, direction, entry, stop_loss, take_profit, ratio, status)
@@ -119,7 +128,7 @@ async function analyzeAssetVoice(symbol, name) {
 }
 
 async function getTradeRecommendationVoice(symbol, name) {
-  speak(`Checking the setup on ${name}. One moment.`);
+  speak(`Checking the full setup on ${name}. One moment.`);
   const recommendation = await getTradeRecommendation(symbol, name);
   const spokenText = recommendation.replace(/\*\*/g, '').replace(/\n+/g, '. ').replace(/-/g, '');
   speak(spokenText);
