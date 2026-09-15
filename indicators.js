@@ -5,7 +5,7 @@ async function getHistory(pair = 'EUR/USD', interval = '1h', outputsize = 50) {
   const response = await fetch(url);
   const data = await response.json();
   if (data.status === 'error') throw new Error(data.message);
-  return data.values.map(v => parseFloat(v.close)).reverse(); // oldest to newest
+  return data.values.map(v => parseFloat(v.close)).reverse();
 }
 
 async function getCandles(pair = 'EUR/USD', interval = '1h', outputsize = 50) {
@@ -18,7 +18,7 @@ async function getCandles(pair = 'EUR/USD', interval = '1h', outputsize = 50) {
     low: parseFloat(v.low),
     close: parseFloat(v.close),
     open: parseFloat(v.open),
-  })).reverse(); // oldest to newest
+  })).reverse();
 }
 
 function calcSMA(closes, period) {
@@ -27,13 +27,24 @@ function calcSMA(closes, period) {
 }
 
 function calcRSI(closes, period = 14) {
+  if (closes.length < period + 1) return null;
+
   let gains = 0, losses = 0;
-  for (let i = closes.length - period; i < closes.length; i++) {
+  for (let i = 1; i <= period; i++) {
     const diff = closes[i] - closes[i - 1];
     if (diff >= 0) gains += diff; else losses -= diff;
   }
-  const avgGain = gains / period;
-  const avgLoss = losses / period;
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+
+  for (let i = period + 1; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    const gain = diff >= 0 ? diff : 0;
+    const loss = diff < 0 ? -diff : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+  }
+
   if (avgLoss === 0) return 100;
   const rs = avgGain / avgLoss;
   return 100 - (100 / (1 + rs));
