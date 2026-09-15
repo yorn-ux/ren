@@ -3,6 +3,7 @@ const { getActiveMode } = require('./modes');
 const { getIndicators } = require('./indicators');
 const { getZoneAnalysis } = require('./zones');
 const { getSupportResistance } = require('./support_resistance');
+const { getLiquiditySweeps } = require('./liquidity');
 const { speak } = require('./voice');
 const db = require('./db');
 const watchlist = require('./watchlist');
@@ -14,7 +15,7 @@ TONE:
 - No generic disclaimers. Trust the user understands suggestions are not directives.
 
 RULES:
-- You will be given REAL calculated indicators, zone data, and support/resistance levels. These are the ONLY numbers you know.
+- You will be given REAL calculated indicators, zone data, support/resistance levels, and liquidity sweep data. These are the ONLY numbers you know.
 - You have NO access to news, economic calendar, or any data beyond what's given to you.
 - NEVER invent dates, events, or any data point not explicitly provided.
 
@@ -69,6 +70,7 @@ async function getTradeRecommendation(symbol, name = symbol) {
   }
 
   const sr = await getSupportResistance(symbol);
+  const liquidity = await getLiquiditySweeps(symbol);
 
   const dataContext = `Asset: ${name} (${symbol})
 
@@ -90,7 +92,10 @@ SMA50: ${zone.indicators.sma50 ? zone.indicators.sma50.toFixed(4) : 'not enough 
 
 SUPPORT/RESISTANCE:
 Nearest resistance: ${sr.nearestResistance ? `${sr.nearestResistance.level.toFixed(5)} (tested ${sr.nearestResistance.touches} times)` : 'none detected'}
-Nearest support: ${sr.nearestSupport ? `${sr.nearestSupport.level.toFixed(5)} (tested ${sr.nearestSupport.touches} times)` : 'none detected'}`;
+Nearest support: ${sr.nearestSupport ? `${sr.nearestSupport.level.toFixed(5)} (tested ${sr.nearestSupport.touches} times)` : 'none detected'}
+
+LIQUIDITY SWEEPS (recent):
+${liquidity.hasSweep ? liquidity.sweeps.map(s => `- ${s.type}, swept level ${s.sweptLevel}, ${s.candlesAgo} candles ago`).join('\n') : 'No recent liquidity sweeps detected.'}`;
 
   const systemPrompt = REN_PERSONA + `
 
@@ -101,9 +106,10 @@ Consider ALL of these together:
 - If a strong support/resistance level (tested 3+ times) sits between entry and the 1:3 target blocking the move, favor 1:2. If the path is clear, 1:3 has more support.
 - If RSI shows room to run and trend (price vs SMA20/SMA50) aligns with the trade direction, 1:3 has more support.
 - If counter-trend or RSI already extreme in the trade's favor, favor 1:2.
+- If a recent liquidity sweep occurred in the SAME direction as this trade (e.g., a buy-side sweep supporting a BUY setup), this strengthens confidence and supports reaching further (favors 1:3). If the sweep contradicts the trade direction, be more cautious (favors 1:2).
 
 Give:
-1. Your chosen ratio (1:2 or 1:3) and the 2-3 key factors that drove the decision (mention zones, S/R, RSI/trend specifically)
+1. Your chosen ratio (1:2 or 1:3) and the key factors that drove the decision (mention zones, S/R, RSI/trend, and liquidity sweeps specifically where relevant)
 2. Final entry, stop loss, and take profit numbers
 3. Confidence: high, medium, or low`;
 

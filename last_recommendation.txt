@@ -1,13 +1,6 @@
-**Chosen ratio:** **1:2**
+**Chosen ratio:** **1:2**  
 
-**Key drivers**
-1. **10 intervening supply/demand zones** sit between the entry ( 77658 ) and the 1:3 target ( 74927 ). The density of zones creates repeated upside “walls” that are likely to stall a deep move.
-2. **Strong resistance at 77402** (tested 7 times) lies just below the entry and between the entry and the 1:3 target. For a short trade that level will act as a “floor” on pull‑backs, making a full 1:3 run less probable.
-3. **RSI 32.8** is already near oversold, hinting that bullish momentum is weakening. While the downtrend (price < SMA20 < SMA50) supports the sell, the low RSI nudges the reward expectation toward the safer 1:2 target.
+**Why 1:2 wins out**
 
-**Trade parameters**
-- **Entry:** 77658.00  
-- **Stop‑loss:** 78568.01 (above the supply zone)  
-- **Take‑profit (1:2):** 75837.98  
-
-**Confidence:** **medium** – the downtrend backs the short bias, but the
+- **Zone congestion:** Ten other supply/demand zones sit between the entry ( 77,658 ) and the 1:3 target ( 74,928 ). That density of opposing zones is a classic blocker for a deeper run, so the nearer 1:2 target is the more realistic exit.  
+- **Support in the path:** The nearest **support at 76,444** (tested twice) lies between entry and the 1:2 target. To
