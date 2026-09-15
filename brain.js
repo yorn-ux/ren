@@ -2,6 +2,7 @@ require('dotenv').config();
 const { getActiveMode } = require('./modes');
 const { getIndicators } = require('./indicators');
 const db = require('./db');
+const { speak } = require('./voice');
 const watchlist = require('./watchlist');
 
 const REN_PERSONA = `You are Ren, a calm, sharp AI research partner built to help your user think clearly under pressure.
@@ -76,5 +77,17 @@ async function analyzeWatchlist() {
   }
   return results;
 }
+async function analyzeAssetVoice(symbol, name) {
+  speak(`Analyzing ${name}. One moment.`);
+  const suggestion = await analyzeAsset(symbol, name);
 
-module.exports = { analyzeAsset, analyzeWatchlist };
+  // Strip markdown formatting for cleaner speech
+  const spokenText = suggestion
+    .replace(/\*\*/g, '')
+    .replace(/\n+/g, '. ')
+    .replace(/-/g, '');
+
+  speak(spokenText);
+  return suggestion;
+}
+module.exports = { analyzeAsset, analyzeWatchlist, analyzeAssetVoice };

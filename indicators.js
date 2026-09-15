@@ -8,6 +8,19 @@ async function getHistory(pair = 'EUR/USD', interval = '1h', outputsize = 50) {
   return data.values.map(v => parseFloat(v.close)).reverse(); // oldest to newest
 }
 
+async function getCandles(pair = 'EUR/USD', interval = '1h', outputsize = 50) {
+  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(pair)}&interval=${interval}&outputsize=${outputsize}&apikey=${process.env.TWELVEDATA_API_KEY}`;
+  const response = await fetch(url);
+  const data = await response.json();
+  if (data.status === 'error') throw new Error(data.message);
+  return data.values.map(v => ({
+    high: parseFloat(v.high),
+    low: parseFloat(v.low),
+    close: parseFloat(v.close),
+    open: parseFloat(v.open),
+  })).reverse(); // oldest to newest
+}
+
 function calcSMA(closes, period) {
   const slice = closes.slice(-period);
   return slice.reduce((a, b) => a + b, 0) / slice.length;
@@ -37,4 +50,4 @@ async function getIndicators(pair = 'EUR/USD') {
   };
 }
 
-module.exports = { getIndicators };
+module.exports = { getIndicators, getCandles };
