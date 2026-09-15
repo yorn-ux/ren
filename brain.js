@@ -4,6 +4,7 @@ const { getIndicators } = require('./indicators');
 const { getZoneAnalysis } = require('./zones');
 const { getSupportResistance } = require('./support_resistance');
 const { getLiquiditySweeps } = require('./liquidity');
+const { getPerformanceStats } = require('./outcomes');
 const { speak } = require('./voice');
 const db = require('./db');
 const watchlist = require('./watchlist');
@@ -15,13 +16,16 @@ TONE:
 - No generic disclaimers. Trust the user understands suggestions are not directives.
 
 RULES:
-- You will be given REAL calculated indicators, zone data, support/resistance levels, and liquidity sweep data. These are the ONLY numbers you know.
+- You will be given REAL calculated indicators, zone data, support/resistance levels, liquidity sweep data, and historical performance stats. These are the ONLY numbers you know.
 - You have NO access to news, economic calendar, or any data beyond what's given to you.
 - NEVER invent dates, events, or any data point not explicitly provided.
 
+FORMAT: Never use markdown tables. Write in plain short paragraphs or simple dashes. This may be converted to speech, so it must read naturally out loud.
+
 SIGN-OFF: End every suggestion with "That's the read. Your call."`;
 
-async function callGroq(systemPrompt, userPrompt) {
+// --- Core LLM call, isolated so it's easy to swap providers or add retries later ---
+async function callGroq(systemPrompt, userPrompt, maxTokens = 800) {
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -34,25 +38,43 @@ async function callGroq(systemPrompt, userPrompt) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      max_tokens: 700,
+      max_tokens: maxTokens,
+      temperature: 0.4, // lower = more consistent, less rambling on a numeric/reasoning task
     }),
   });
+
   const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
+  if (data.error) throw new Error(`Groq API error: ${data.error.message}`);
+  if (!data.choices || !data.choices[0]) throw new Error('Groq API returned no choices');
+
   return data.choices[0].message.content;
 }
 
+function stripForVoice(text) {
+  return text
+    .replace(/\*\*/g, '')
+    .replace(/\|/g, '')
+    .replace(/^-{2,}$/gm, '')
+    .replace(/\n+/g, '. ')
+    .replace(/-/g, '')
+    .trim();
+}
+
+// --- Basic directional call (used by watchlist scans) ---
 async function analyzeAsset(symbol, name) {
   const ind = await getIndicators(symbol);
+  if (!ind.rsi14) throw new Error(`Not enough price history for ${name} to calculate RSI`);
+
   const dataContext = `Asset: ${name} (${symbol})
 Current price: ${ind.price}
 SMA20: ${ind.sma20.toFixed(4)}
 SMA50: ${ind.sma50 ? ind.sma50.toFixed(4) : 'not enough data'}
-RSI14: ${ind.rsi14 ? ind.rsi14.toFixed(2) : 'not enough data'}`;
+RSI14: ${ind.rsi14.toFixed(2)}`;
 
   const suggestion = await callGroq(
     REN_PERSONA + `\n\nGive a clear direction: BUY, SELL, or HOLD. State confidence: high, medium, or low. Base reasoning ONLY on the indicators given.`,
-    `Here is the real data:\n${dataContext}\n\nGive your direction, confidence, and brief reasoning based ONLY on this data.`
+    `Here is the real data:\n${dataContext}\n\nGive your direction, confidence, and brief reasoning based ONLY on this data.`,
+    500
   );
 
   const activeMode = getActiveMode();
@@ -62,15 +84,20 @@ RSI14: ${ind.rsi14 ? ind.rsi14.toFixed(2) : 'not enough data'}`;
   return suggestion;
 }
 
+// --- Full confluence trade recommendation ---
+// Ren returns a structured trailer block we can parse reliably, instead of
+// guessing the chosen ratio from free-form prose.
 async function getTradeRecommendation(symbol, name = symbol) {
   const zone = await getZoneAnalysis(symbol);
-
   if (!zone.hasSetup) {
-    return zone.message;
+    return { hasSetup: false, message: zone.message, text: zone.message };
   }
 
-  const sr = await getSupportResistance(symbol);
-  const liquidity = await getLiquiditySweeps(symbol);
+  const [sr, liquidity] = await Promise.all([
+    getSupportResistance(symbol),
+    getLiquiditySweeps(symbol),
+  ]);
+  const stats = getPerformanceStats();
 
   const dataContext = `Asset: ${name} (${symbol})
 
@@ -95,50 +122,102 @@ Nearest resistance: ${sr.nearestResistance ? `${sr.nearestResistance.level.toFix
 Nearest support: ${sr.nearestSupport ? `${sr.nearestSupport.level.toFixed(5)} (tested ${sr.nearestSupport.touches} times)` : 'none detected'}
 
 LIQUIDITY SWEEPS (recent):
-${liquidity.hasSweep ? liquidity.sweeps.map(s => `- ${s.type}, swept level ${s.sweptLevel}, ${s.candlesAgo} candles ago`).join('\n') : 'No recent liquidity sweeps detected.'}`;
+${liquidity.hasSweep ? liquidity.sweeps.map(s => `- ${s.type}, swept level ${s.sweptLevel}, ${s.candlesAgo} candles ago`).join('\n') : 'No recent liquidity sweeps detected.'}
+
+HISTORICAL PERFORMANCE (Ren's own past calls):
+1:2 ratio track record: ${stats['1:2'].winRate} (${stats['1:2'].wins}W / ${stats['1:2'].losses}L, ${stats['1:2'].total} closed trades)
+1:3 ratio track record: ${stats['1:3'].winRate} (${stats['1:3'].wins}W / ${stats['1:3'].losses}L, ${stats['1:3'].total} closed trades)`;
 
   const systemPrompt = REN_PERSONA + `
 
-YOUR TASK: Decide whether the 1:2 or 1:3 risk-reward ratio is more realistic for THIS specific setup, based on full confluence.
+YOUR TASK: Decide whether the 1:2 or 1:3 risk-reward ratio is more realistic for THIS specific setup, based on full confluence — not a default preference for the bigger number.
 
 Consider ALL of these together:
 - If other supply/demand zones sit between entry and the 1:3 target, favor 1:2.
 - If a strong support/resistance level (tested 3+ times) sits between entry and the 1:3 target blocking the move, favor 1:2. If the path is clear, 1:3 has more support.
 - If RSI shows room to run and trend (price vs SMA20/SMA50) aligns with the trade direction, 1:3 has more support.
 - If counter-trend or RSI already extreme in the trade's favor, favor 1:2.
-- If a recent liquidity sweep occurred in the SAME direction as this trade (e.g., a buy-side sweep supporting a BUY setup), this strengthens confidence and supports reaching further (favors 1:3). If the sweep contradicts the trade direction, be more cautious (favors 1:2).
+- If a recent liquidity sweep occurred in the SAME direction as this trade, this strengthens confidence toward 1:3. If it contradicts the trade direction, favor 1:2.
+- If historical data shows 5+ closed trades for a ratio, weigh that real track record in. A ratio with a low win rate should require stronger confluence to justify reuse. If fewer than 5 closed trades exist, say so explicitly and rely on technical confluence alone.
 
-Give:
-1. Your chosen ratio (1:2 or 1:3) and the key factors that drove the decision (mention zones, S/R, RSI/trend, and liquidity sweeps specifically where relevant)
-2. Final entry, stop loss, and take profit numbers
-3. Confidence: high, medium, or low`;
+First, write 3-5 short sentences of plain-language reasoning covering the factors above.
 
-  const recommendation = await callGroq(systemPrompt, `Here is the real setup data:\n${dataContext}\n\nAnalyze and give your final trade recommendation.`);
+Then end your response with EXACTLY this block, filled in with real numbers (no extra text after it):
 
-  const chosenRatio = recommendation.match(/1:3.{0,30}(chosen|favor|recommend)/i) ? '1:3' : '1:2';
-  const finalTarget = chosenRatio === '1:3' ? zone.target3R : zone.target2R;
+---
+RATIO: [1:2 or 1:3]
+ENTRY: [number]
+STOP_LOSS: [number]
+TAKE_PROFIT: [number]
+CONFIDENCE: [high/medium/low]
+---`;
+
+  const raw = await callGroq(
+    systemPrompt,
+    `Here is the real setup data:\n${dataContext}\n\nAnalyze and give your final trade recommendation.`,
+    900
+  );
+
+  const parsed = parseTradeBlock(raw, zone);
 
   db.prepare(`INSERT INTO trades (symbol, name, direction, entry, stop_loss, take_profit, ratio, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, 'open')`)
-    .run(symbol, name, zone.direction, zone.entry, zone.stopLoss, finalTarget, chosenRatio);
+    .run(symbol, name, zone.direction, parsed.entry, parsed.stopLoss, parsed.takeProfit, parsed.ratio);
 
-  return recommendation;
+  // Strip the structured block out of the spoken/displayed reasoning text
+  const reasoningText = raw.split('---')[0].trim();
+
+  return {
+    hasSetup: true,
+    text: reasoningText,
+    ...parsed,
+  };
 }
 
+// Reliable structured parsing instead of guessing from free-form prose
+function parseTradeBlock(raw, zone) {
+  const ratioMatch = raw.match(/RATIO:\s*(1:[23])/i);
+  const entryMatch = raw.match(/ENTRY:\s*([\d.]+)/i);
+  const slMatch = raw.match(/STOP_LOSS:\s*([\d.]+)/i);
+  const tpMatch = raw.match(/TAKE_PROFIT:\s*([\d.]+)/i);
+  const confMatch = raw.match(/CONFIDENCE:\s*(high|medium|low)/i);
+
+  const ratio = ratioMatch ? ratioMatch[1] : '1:2'; // safe default if parsing fails
+  const fallbackTarget = ratio === '1:3' ? zone.target3R : zone.target2R;
+
+  return {
+    ratio,
+    entry: entryMatch ? parseFloat(entryMatch[1]) : zone.entry,
+    stopLoss: slMatch ? parseFloat(slMatch[1]) : zone.stopLoss,
+    takeProfit: tpMatch ? parseFloat(tpMatch[1]) : fallbackTarget,
+    confidence: confMatch ? confMatch[1].toLowerCase() : 'unknown',
+  };
+}
+
+// --- Voice wrappers ---
 async function analyzeAssetVoice(symbol, name) {
   speak(`Analyzing ${name}. One moment.`);
   const suggestion = await analyzeAsset(symbol, name);
-  const spokenText = suggestion.replace(/\*\*/g, '').replace(/\n+/g, '. ').replace(/-/g, '');
-  speak(spokenText);
+  speak(stripForVoice(suggestion));
   return suggestion;
 }
 
 async function getTradeRecommendationVoice(symbol, name) {
   speak(`Checking the full setup on ${name}. One moment.`);
-  const recommendation = await getTradeRecommendation(symbol, name);
-  const spokenText = recommendation.replace(/\*\*/g, '').replace(/\n+/g, '. ').replace(/-/g, '');
-  speak(spokenText);
-  return recommendation;
+  const result = await getTradeRecommendation(symbol, name);
+
+  if (!result.hasSetup) {
+    speak(result.message);
+    return result;
+  }
+
+  const spoken = `${stripForVoice(result.text)}. Recommendation: ${zone_direction_label(result)} at ${result.entry}, stop loss ${result.stopLoss}, take profit ${result.takeProfit}, ratio ${result.ratio}, confidence ${result.confidence}. That's the read. Your call.`;
+  speak(spoken);
+  return result;
+}
+
+function zone_direction_label(result) {
+  return result.ratio ? (result.entry > result.stopLoss ? 'Buy' : 'Sell') : '';
 }
 
 function delay(ms) {
@@ -156,7 +235,7 @@ async function analyzeWatchlist() {
       console.log(`Failed on ${asset.name}: ${err.message}`);
       results.push({ name: asset.name, error: err.message });
     }
-    await delay(8000);
+    await delay(8000); // respect free-tier rate limits
   }
   return results;
 }

@@ -1,6 +1,9 @@
 **Chosen ratio:** **1:2**  
 
-**Why 1:2 wins out**
+**Why 1:2 wins the confluence**
 
-- **Zone congestion:** Ten other supply/demand zones sit between the entry ( 77,658 ) and the 1:3 target ( 74,928 ). That density of opposing zones is a classic blocker for a deeper run, so the nearer 1:2 target is the more realistic exit.  
-- **Support in the path:** The nearest **support at 76,444** (tested twice) lies between entry and the 1:2 target. To
+| Factor | What the data says | Impact on ratio |
+|--------|-------------------|-----------------|
+| **Supply/demand clutter** | 10 other supply zones sit between the entry ( 77 658 ) and the 1:3 target ( 74 928 ) | Each zone can eat profit‑run‑up, so the longer target is much riskier – pushes toward 1:2 |
+| **Strong resistance** | Nearest resistance at 77 402.21, **tested 7 times**. It lies directly between entry and **both** targets. | A heavily‑tested barrier is likely to stall a move, again favoring the nearer 1:2 target. |
+| **RSI**
