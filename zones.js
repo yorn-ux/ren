@@ -1,4 +1,4 @@
-const { getCandles } = require('./indicators');
+const { getCandles, getIndicators } = require('./indicators');
 
 function findZones(candles) {
   const zones = [];
@@ -28,43 +28,60 @@ function findZones(candles) {
   return zones;
 }
 
-async function getTradeSetup(symbol, ratio = 2) {
+// Gathers everything needed to judge the setup — no ratio decision made here
+async function getZoneAnalysis(symbol) {
   const candles = await getCandles(symbol, '1h', 60);
   const zones = findZones(candles);
   const currentPrice = candles[candles.length - 1].close;
+  const indicators = await getIndicators(symbol);
 
   if (zones.length === 0) {
     return { hasSetup: false, currentPrice, message: 'No clear supply/demand zone detected recently.' };
   }
 
   const zone = zones[zones.length - 1];
-
-  let entry, stopLoss, takeProfit, direction;
+  let entry, stopLoss, direction, risk;
 
   if (zone.type === 'demand') {
     direction = 'BUY';
     entry = zone.zoneHigh;
     stopLoss = zone.zoneLow;
-    const risk = entry - stopLoss;
-    takeProfit = entry + (risk * ratio);
+    risk = entry - stopLoss;
   } else {
     direction = 'SELL';
     entry = zone.zoneLow;
     stopLoss = zone.zoneHigh;
-    const risk = stopLoss - entry;
-    takeProfit = entry - (risk * ratio);
+    risk = stopLoss - entry;
   }
+
+  const target2R = direction === 'BUY' ? entry + (risk * 2) : entry - (risk * 2);
+  const target3R = direction === 'BUY' ? entry + (risk * 3) : entry - (risk * 3);
+
+  // Check for other zones sitting between entry and the 3R target (potential obstacles)
+  const pathMin = Math.min(target3R, entry);
+  const pathMax = Math.max(target3R, entry);
+  const obstacleZones = zones
+    .filter(z => z !== zone)
+    .filter(z => {
+      const zMid = (z.zoneHigh + z.zoneLow) / 2;
+      return zMid > pathMin && zMid < pathMax;
+    });
 
   return {
     hasSetup: true,
     currentPrice,
     zoneType: zone.type,
+    zoneHigh: zone.zoneHigh,
+    zoneLow: zone.zoneLow,
     direction,
-    entry: entry.toFixed(5),
-    stopLoss: stopLoss.toFixed(5),
-    takeProfit: takeProfit.toFixed(5),
-    ratio: `1:${ratio}`,
+    entry,
+    stopLoss,
+    risk,
+    target2R,
+    target3R,
+    obstacleCount: obstacleZones.length,
+    indicators, // { price, sma20, sma50, rsi14 }
   };
 }
 
-module.exports = { getTradeSetup };
+module.exports = { getZoneAnalysis };
