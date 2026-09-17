@@ -24,6 +24,9 @@ FORMAT: Never use markdown tables. Write in plain short paragraphs or simple das
 
 SIGN-OFF: End every suggestion with "That's the read. Your call."`;
 
+const AUTO_APPROVE_MIN_TRADES = 5;
+const AUTO_APPROVE_MIN_WINRATE = 60; // percent
+
 async function callGroq(systemPrompt, userPrompt, maxTokens = 800) {
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -80,6 +83,19 @@ RSI14: ${ind.rsi14.toFixed(2)}`;
     .run(activeMode ? activeMode.name : 'pulse', `${name}: ${suggestion}`, 'pending');
 
   return suggestion;
+}
+
+// Decide whether a trade qualifies for auto-approval based on proven track record
+function decideStatus(ratio, confidence, stats) {
+  if (confidence !== 'high') return 'pending_approval';
+
+  const ratioStats = stats[ratio];
+  if (!ratioStats || ratioStats.total < AUTO_APPROVE_MIN_TRADES) return 'pending_approval';
+
+  const winRateNum = parseFloat(ratioStats.winRate); // e.g. "66.7%" -> 66.7
+  if (isNaN(winRateNum) || winRateNum < AUTO_APPROVE_MIN_WINRATE) return 'pending_approval';
+
+  return 'approved';
 }
 
 async function getTradeRecommendation(symbol, name = symbol) {
@@ -154,16 +170,18 @@ CONFIDENCE: [high/medium/low]
   );
 
   const parsed = parseTradeBlock(raw, zone);
+  const status = decideStatus(parsed.ratio, parsed.confidence, stats);
 
   db.prepare(`INSERT INTO trades (symbol, name, direction, entry, stop_loss, take_profit, ratio, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'open')`)
-    .run(symbol, name, zone.direction, parsed.entry, parsed.stopLoss, parsed.takeProfit, parsed.ratio);
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(symbol, name, zone.direction, parsed.entry, parsed.stopLoss, parsed.takeProfit, parsed.ratio, status);
 
   const reasoningText = raw.split('---')[0].trim();
 
   return {
     hasSetup: true,
     text: reasoningText,
+    status,
     ...parsed,
   };
 }
@@ -209,7 +227,9 @@ async function getTradeRecommendationVoice(symbol, name) {
     return result;
   }
 
-  console.log(`\n--- ${name} trade setup ---`);
+  const statusLabel = result.status === 'approved' ? 'AUTO-APPROVED (proven track record)' : 'PENDING YOUR APPROVAL';
+
+  console.log(`\n--- ${name} trade setup [${statusLabel}] ---`);
   console.log(result.text);
   console.log(`Direction: ${zone_direction_label(result)}`);
   console.log(`Entry: ${result.entry}`);
@@ -218,7 +238,11 @@ async function getTradeRecommendationVoice(symbol, name) {
   console.log(`Ratio: ${result.ratio}`);
   console.log(`Confidence: ${result.confidence}\n`);
 
-  const spoken = `${stripForVoice(result.text)}. Recommendation: ${zone_direction_label(result)} at ${result.entry}, stop loss ${result.stopLoss}, take profit ${result.takeProfit}, ratio ${result.ratio}, confidence ${result.confidence}. That's the read. Your call.`;
+  const approvalNote = result.status === 'approved'
+    ? 'This one auto-approved based on a proven track record.'
+    : 'This one needs your approval before I track it as a live trade.';
+
+  const spoken = `${stripForVoice(result.text)}. Recommendation: ${zone_direction_label(result)} at ${result.entry}, stop loss ${result.stopLoss}, take profit ${result.takeProfit}, ratio ${result.ratio}, confidence ${result.confidence}. ${approvalNote} That's the read. Your call.`;
   speak(spoken);
   return result;
 }

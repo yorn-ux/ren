@@ -2,7 +2,7 @@ const db = require('./db');
 const { getIndicators } = require('./indicators');
 
 async function checkOpenTrades() {
-  const openTrades = db.prepare("SELECT * FROM trades WHERE status = 'open'").all();
+  const openTrades = db.prepare("SELECT * FROM trades WHERE status = 'approved'").all();
   const results = [];
 
   for (const trade of openTrades) {
@@ -33,7 +33,6 @@ async function checkOpenTrades() {
   return results;
 }
 
-// Get win rate stats, broken down by ratio (1:2 vs 1:3) — this is what makes Ren "wiser"
 function getPerformanceStats() {
   const closed = db.prepare("SELECT * FROM trades WHERE status IN ('hit_tp', 'hit_sl')").all();
 

@@ -2,8 +2,9 @@ require('dotenv').config();
 const readline = require('readline');
 const { listen, speak } = require('./voice');
 const { analyzeAssetVoice, getTradeRecommendationVoice } = require('./brain');
-const { startScheduler } = require('./scheduler');
+const { startScheduler, runScan } = require('./scheduler');
 const { getActiveMode, setActiveMode } = require('./modes');
+const { listPending, approveLatest, rejectLatest } = require('./approvals');
 const watchlist = require('./watchlist');
 
 function findAsset(query) {
@@ -16,15 +17,54 @@ function findAsset(query) {
 async function handleCommand(input) {
   const text = input.toLowerCase().trim();
 
+  if (text === 'pending' || text.includes('show pending')) {
+    const pending = listPending();
+    if (pending.length === 0) {
+      console.log('No trades pending approval.');
+      speak('Nothing pending right now.');
+    } else {
+      console.log('\n--- Pending Approvals ---');
+      pending.forEach(t => {
+        console.log(`[${t.id}] ${t.name} ${t.direction} @ ${t.entry} | SL ${t.stop_loss} | TP ${t.take_profit} | ${t.ratio}`);
+      });
+      speak(`You have ${pending.length} trades pending approval. Check the screen for details.`);
+    }
+    return;
+  }
+
+  if (text.startsWith('approve')) {
+    const target = text.replace('approve', '').trim();
+    const result = approveLatest(target);
+    if (result.success) {
+      console.log(`Approved: ${result.trade.name} ${result.trade.direction} @ ${result.trade.entry}`);
+      speak(`Approved. Tracking ${result.trade.name} now.`);
+    } else {
+      console.log(result.message);
+      speak(result.message);
+    }
+    return;
+  }
+
+  if (text.startsWith('reject')) {
+    const target = text.replace('reject', '').trim();
+    const result = rejectLatest(target);
+    if (result.success) {
+      console.log(`Rejected: ${result.trade.name} ${result.trade.direction} @ ${result.trade.entry}`);
+      speak(`Rejected. Won't track that one.`);
+    } else {
+      console.log(result.message);
+      speak(result.message);
+    }
+    return;
+  }
+
   if (text.includes('scan') || text.includes('watchlist')) {
     console.log('Starting a manual scan of the full watchlist...');
-    const { runScan } = require('./scheduler');
     await runScan();
     return;
   }
 
   if (text.includes('mode')) {
-    const mode = watchlist.some(() => false); // placeholder, modes are separate from assets
     console.log('Available modes: pulse, focus, grind. Say "switch to pulse" etc.');
     const match = text.match(/(pulse|focus|grind)/);
     if (match) {
@@ -36,7 +76,7 @@ async function handleCommand(input) {
 
   const asset = findAsset(text);
   if (!asset) {
-    console.log('No matching asset found. Try an asset name, "scan", or a mode name.');
+    console.log('No matching asset found. Try an asset name, "scan", "pending", "approve/reject [asset]", or a mode name.');
     speak("I didn't catch a valid asset or command.");
     return;
   }
@@ -52,7 +92,7 @@ async function handleCommand(input) {
 
 function startVoiceLoop() {
   console.log('\nRen is ready. Say an asset name for a quick read, or "trade setup on [asset]" for the full plan.');
-  console.log('Say "scan" to run the full watchlist, or "exit" to quit voice mode.\n');
+  console.log('Say "pending", "approve [asset]", "reject [asset]", "scan", or "exit" to quit voice mode.\n');
 
   const loop = () => {
     let heard;
@@ -82,7 +122,7 @@ function startTextMenu() {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
   console.log('\n=== Ren — Text Mode ===');
-  console.log('Commands: an asset name | "trade setup on [asset]" | "scan" | "switch to [pulse/focus/grind]" | "voice" | "exit"\n');
+  console.log('Commands: an asset name | "trade setup on [asset]" | "scan" | "pending" | "approve [asset]" | "reject [asset]" | "switch to [pulse/focus/grind]" | "voice" | "exit"\n');
 
   const ask = () => {
     rl.question('> ', async (input) => {
@@ -112,9 +152,8 @@ function main() {
   const activeMode = getActiveMode();
   console.log(`Active mode: ${activeMode ? activeMode.name : 'none set'}`);
 
-  startScheduler(); // background hourly scans + voice alerts always run
-
-  startTextMenu(); // interactive front-end
+  startScheduler();
+  startTextMenu();
 }
 
 main();
