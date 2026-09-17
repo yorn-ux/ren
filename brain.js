@@ -24,7 +24,6 @@ FORMAT: Never use markdown tables. Write in plain short paragraphs or simple das
 
 SIGN-OFF: End every suggestion with "That's the read. Your call."`;
 
-// --- Core LLM call, isolated so it's easy to swap providers or add retries later ---
 async function callGroq(systemPrompt, userPrompt, maxTokens = 800) {
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -39,7 +38,7 @@ async function callGroq(systemPrompt, userPrompt, maxTokens = 800) {
         { role: 'user', content: userPrompt },
       ],
       max_tokens: maxTokens,
-      temperature: 0.4, // lower = more consistent, less rambling on a numeric/reasoning task
+      temperature: 0.4,
     }),
   });
 
@@ -60,7 +59,6 @@ function stripForVoice(text) {
     .trim();
 }
 
-// --- Basic directional call (used by watchlist scans) ---
 async function analyzeAsset(symbol, name) {
   const ind = await getIndicators(symbol);
   if (!ind.rsi14) throw new Error(`Not enough price history for ${name} to calculate RSI`);
@@ -84,9 +82,6 @@ RSI14: ${ind.rsi14.toFixed(2)}`;
   return suggestion;
 }
 
-// --- Full confluence trade recommendation ---
-// Ren returns a structured trailer block we can parse reliably, instead of
-// guessing the chosen ratio from free-form prose.
 async function getTradeRecommendation(symbol, name = symbol) {
   const zone = await getZoneAnalysis(symbol);
   if (!zone.hasSetup) {
@@ -164,7 +159,6 @@ CONFIDENCE: [high/medium/low]
     VALUES (?, ?, ?, ?, ?, ?, ?, 'open')`)
     .run(symbol, name, zone.direction, parsed.entry, parsed.stopLoss, parsed.takeProfit, parsed.ratio);
 
-  // Strip the structured block out of the spoken/displayed reasoning text
   const reasoningText = raw.split('---')[0].trim();
 
   return {
@@ -174,7 +168,6 @@ CONFIDENCE: [high/medium/low]
   };
 }
 
-// Reliable structured parsing instead of guessing from free-form prose
 function parseTradeBlock(raw, zone) {
   const ratioMatch = raw.match(/RATIO:\s*(1:[23])/i);
   const entryMatch = raw.match(/ENTRY:\s*([\d.]+)/i);
@@ -182,7 +175,7 @@ function parseTradeBlock(raw, zone) {
   const tpMatch = raw.match(/TAKE_PROFIT:\s*([\d.]+)/i);
   const confMatch = raw.match(/CONFIDENCE:\s*(high|medium|low)/i);
 
-  const ratio = ratioMatch ? ratioMatch[1] : '1:2'; // safe default if parsing fails
+  const ratio = ratioMatch ? ratioMatch[1] : '1:2';
   const fallbackTarget = ratio === '1:3' ? zone.target3R : zone.target2R;
 
   return {
@@ -194,10 +187,14 @@ function parseTradeBlock(raw, zone) {
   };
 }
 
-// --- Voice wrappers ---
+function zone_direction_label(result) {
+  return result.entry > result.stopLoss ? 'Buy' : 'Sell';
+}
+
 async function analyzeAssetVoice(symbol, name) {
   speak(`Analyzing ${name}. One moment.`);
   const suggestion = await analyzeAsset(symbol, name);
+  console.log(`\n--- ${name} ---\n${suggestion}\n`);
   speak(stripForVoice(suggestion));
   return suggestion;
 }
@@ -207,17 +204,23 @@ async function getTradeRecommendationVoice(symbol, name) {
   const result = await getTradeRecommendation(symbol, name);
 
   if (!result.hasSetup) {
+    console.log(`\n--- ${name} ---\n${result.message}\n`);
     speak(result.message);
     return result;
   }
 
+  console.log(`\n--- ${name} trade setup ---`);
+  console.log(result.text);
+  console.log(`Direction: ${zone_direction_label(result)}`);
+  console.log(`Entry: ${result.entry}`);
+  console.log(`Stop Loss: ${result.stopLoss}`);
+  console.log(`Take Profit: ${result.takeProfit}`);
+  console.log(`Ratio: ${result.ratio}`);
+  console.log(`Confidence: ${result.confidence}\n`);
+
   const spoken = `${stripForVoice(result.text)}. Recommendation: ${zone_direction_label(result)} at ${result.entry}, stop loss ${result.stopLoss}, take profit ${result.takeProfit}, ratio ${result.ratio}, confidence ${result.confidence}. That's the read. Your call.`;
   speak(spoken);
   return result;
-}
-
-function zone_direction_label(result) {
-  return result.ratio ? (result.entry > result.stopLoss ? 'Buy' : 'Sell') : '';
 }
 
 function delay(ms) {
@@ -235,7 +238,7 @@ async function analyzeWatchlist() {
       console.log(`Failed on ${asset.name}: ${err.message}`);
       results.push({ name: asset.name, error: err.message });
     }
-    await delay(8000); // respect free-tier rate limits
+    await delay(8000);
   }
   return results;
 }
