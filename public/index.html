@@ -47,9 +47,7 @@
   .mode-tab.active { background: var(--accent-dim); color: var(--accent); }
   .mode-tab .tab-sub { display: block; font-size: 10px; font-weight: 400; opacity: 0.7; margin-top: 1px; }
 
-  .sub-tabs {
-    display: flex; gap: 6px; margin: 12px 18px 0; overflow-x: auto;
-  }
+  .sub-tabs { display: flex; gap: 6px; margin: 12px 18px 0; overflow-x: auto; }
   .sub-tab {
     white-space: nowrap; padding: 8px 14px; border-radius: 20px;
     font-size: 12px; font-weight: 600; color: var(--text-dim);
@@ -340,7 +338,6 @@ function renderPending() {
 }
 
 function renderApproved() {
-  // approvals.js sets manually-approved trades to 'open'; brain.js auto-approve sets 'approved'
   const approved = allTrades.filter(t => t.status === 'open' || t.status === 'approved');
   document.getElementById('count-approved').textContent = approved.length;
   document.getElementById('count-approved-full').textContent = approved.length;
@@ -426,6 +423,7 @@ async function analyzeAsset(symbol, name, btn) {
         <div class="detail-row"><span>Entry</span><span>${result.entry}</span></div>
         <div class="detail-row"><span>Stop Loss / Take Profit</span><span>${result.stopLoss} / ${result.takeProfit}</span></div>
         <div class="detail-row"><span>Ratio / Confidence</span><span>${result.ratio} / ${result.confidence}</span></div>
+        ${result.positionSize && !result.positionSize.error ? `<div class="detail-row"><span>Position Size</span><span>${result.positionSize.isForex ? result.positionSize.lots + ' lots' : result.positionSize.units + ' units'} (risk $${result.positionSize.riskAmount})</span></div>` : ''}
         <div class="detail-row"><span>Status</span><span class="status-badge ${result.status}">${result.status.replace('_',' ')}</span></div>
         ${result.crt && result.crt.hasSetup ? `<div class="crt-badge ${result.crt.mssConfirmed ? 'mss-confirmed' : ''}"><span class="crt-dot"></span>CRT ${result.crt.direction} sweep detected</div>` : ''}
         ${result.news && result.news.available ? `<div class="detail-row" style="margin-top:8px;"><span>News Sentiment</span><span>${result.news.label} (${result.news.averageScore})</span></div>` : ''}

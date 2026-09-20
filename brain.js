@@ -7,6 +7,7 @@ const { getLiquiditySweeps } = require('./liquidity');
 const { getPerformanceStats } = require('./outcomes');
 const { getCRTSetup } = require('./crt');
 const { getNewsSentiment } = require('./news');
+const { calculatePositionSize } = require('./positionSize');
 const { speak } = require('./voice');
 const db = require('./db');
 const watchlist = require('./watchlist');
@@ -65,7 +66,6 @@ function stripForVoice(text) {
     .trim();
 }
 
-// Check if there's already an active trade on this asset, and how it's doing
 function getExistingPosition(symbol, currentPrice) {
   const placeholders = ACTIVE_STATUSES.map(() => '?').join(',');
   const existing = db.prepare(
@@ -139,9 +139,6 @@ async function getTradeRecommendation(symbol, name = symbol, includeNews = false
     return { hasSetup: false, message: zone.message, text: zone.message };
   }
 
-  // Duplicate-trade guard: if an active trade already exists in the SAME
-  // direction, don't log a second one. Opposite-direction setups (genuine
-  // reversal signals) still proceed normally.
   const existingSameDirection = getExistingPosition(symbol, zone.currentPrice);
 
   if (existingSameDirection && existingSameDirection.direction === zone.direction) {
@@ -248,6 +245,7 @@ CONFIDENCE: [high/medium/low]
 
   const parsed = parseTradeBlock(raw, zone);
   const status = decideStatus(parsed.ratio, parsed.confidence, stats);
+  const positionSize = calculatePositionSize(parsed.entry, parsed.stopLoss, symbol);
 
   db.prepare(`INSERT INTO trades (symbol, name, direction, entry, stop_loss, take_profit, ratio, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
@@ -262,6 +260,7 @@ CONFIDENCE: [high/medium/low]
     crt,
     news,
     existingPosition: existingSameDirection,
+    positionSize,
     ...parsed,
   };
 }
@@ -320,6 +319,12 @@ async function getTradeRecommendationVoice(symbol, name) {
   console.log(`Take Profit: ${result.takeProfit}`);
   console.log(`Ratio: ${result.ratio}`);
   console.log(`Confidence: ${result.confidence}`);
+  if (result.positionSize && !result.positionSize.error) {
+    const sizeLabel = result.positionSize.isForex
+      ? `${result.positionSize.lots} lots`
+      : `${result.positionSize.units} units`;
+    console.log(`Position size: ${sizeLabel} (risking $${result.positionSize.riskAmount})`);
+  }
   if (result.crt && result.crt.hasSetup) {
     console.log(`CRT/Turtle Soup: ${result.crt.direction} sweep, MSS ${result.crt.mssConfirmed ? 'confirmed' : 'not yet confirmed'}`);
   }
