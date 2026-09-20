@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REN Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ece9e4;
+    --card: #f7f5f1;
+    --border: #d6d1c8;
+    --text: #111111;
+    --muted: #6b6560;
+    --red: #c1272d;
+    --red-dark: #961d22;
+    --green: #1f7a3f;
+    --font: 'Inter', system-ui, sans-serif;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    min-height: 64px;
+    background: var(--card);
+    border-bottom: 2px solid var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    gap: 16px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .brand-mark {
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .brand-mark span { color: var(--red); }
+
+  .brand-tag {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    border-left: 1px solid var(--border);
+    padding-left: 12px;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 8px 18px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.12s ease;
+  }
+
+  .tab:hover { color: var(--text); background: var(--bg); }
+  .tab.active { background: var(--text); color: var(--card); }
+
+  /* ---------- Main ---------- */
+  main {
+    flex: 1;
+    padding: 20px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 0;
+  }
+
+  /* ---------- Capital config row ---------- */
+  .config-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.4fr 0.8fr auto;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .config-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    min-width: 0;
+  }
+
+  .config-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .config-value {
+    font-size: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .config-item input,
+  .config-item select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    outline: none;
+  }
+
+  .config-item input:focus,
+  .config-item select:focus { border-color: var(--red); }
+
+  .config-save {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .config-save .btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ---------- Status row ---------- */
+  .status-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .status-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    min-width: 0;
+  }
+
+  .status-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  .status-value {
+    font-size: 18px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---------- Panels ---------- */
+  .panel {
+    display: none;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    gap: 16px;
+  }
+
+  .panel.active { display: flex; }
+
+  .pulse-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr 320px;
+    gap: 16px;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .focus-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
+  /* ---------- Card ---------- */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .card-head {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text);
+    flex-shrink: 0;
+    gap: 8px;
+  }
+
+  .card-body {
+    padding: 14px;
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
+
+  /* ---------- Watchlist item ---------- */
+  .item {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    background: var(--bg);
+    transition: border 0.12s ease;
+    gap: 8px;
+  }
+
+  .item:hover { border-color: var(--red); }
+  .item .name { font-weight: 600; }
+  .item .sym { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 16px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.12s ease;
+  }
+
+  .btn:hover { border-color: var(--text); }
+
+  .btn-approve {
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--card);
+  }
+  .btn-approve:hover { background: var(--red); border-color: var(--red); }
+
+  .btn-reject {
+    background: transparent;
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .btn-reject:hover { background: var(--red); color: #fff; }
+
+  /* ---------- Levels ---------- */
+  .level {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+  .level:last-of-type { border-bottom: none; }
+  .level-label { color: var(--muted); font-size: 13px; font-weight: 500; }
+  .level-value { font-weight: 700; font-size: 15px; }
+
+  /* ---------- Portfolio chart ---------- */
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 140px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    flex-shrink: 0;
+  }
+
+  .chart-wrap svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    overflow: visible;
+  }
+
+  .chart-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  /* ---------- Portfolio stats strip ---------- */
+  .port-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .port-stat {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+
+  .port-stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+
+  .port-stat-value {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  /* ---------- Positions ---------- */
+  .pos {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    gap: 8px;
+  }
+  .pos-name { font-weight: 600; font-size: 13px; }
+  .pos-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .pos-pnl { font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .pos-pnl.up { color: var(--green); }
+  .pos-pnl.down { color: var(--red); }
+  .pos-pnl.flat { color: var(--muted); }
+
+  /* ---------- Inputs ---------- */
+  textarea {
+    width: 100%;
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    padding: 14px;
+    border-radius: var(--radius);
+    outline: none;
+    resize: none;
+    line-height: 1.6;
+    min-height: 120px;
+  }
+
+  textarea:focus { border-color: var(--red); }
+
+  /* ---------- Log ---------- */
+  .log {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    height: 70px;
+    overflow-y: auto;
+    font-size: 12px;
+    color: var(--muted);
+    flex-shrink: 0;
+    line-height: 1.6;
+  }
+
+  .empty { color: var(--muted); font-size: 13px; }
+
+  /* ---------- Responsive ---------- */
+
+  @media (max-width: 1100px) {
+    body { overflow: auto; height: auto; min-height: 100vh; }
+    main { overflow: visible; }
+    .pulse-grid { grid-template-columns: 1fr 1fr; height: auto; }
+    .pulse-grid .card:nth-child(3) { grid-column: 1 / -1; }
+    .panel { height: auto; }
+    .card { min-height: 260px; }
+    .config-row { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 780px) {
+    header { padding: 12px 16px; }
+    .brand-tag { display: none; }
+    main { padding: 14px; gap: 14px; }
+    .status-row { grid-template-columns: repeat(2, 1fr); }
+    .pulse-grid, .focus-grid { grid-template-columns: 1fr; }
+    .pulse-grid .card:nth-child(3) { grid-column: auto; }
+    .status-value { font-size: 16px; }
+    .card { min-height: 220px; }
+    .log { height: 90px; }
+    .chart-wrap { height: 120px; }
+    .config-row { grid-template-columns: 1fr 1fr; }
+    .config-save { grid-column: 1 / -1; }
+  }
+
+  @media (max-width: 480px) {
+    header { flex-direction: column; align-items: stretch; gap: 10px; }
+    .tabs { justify-content: space-between; }
+    .tab { flex: 1; text-align: center; padding: 8px 10px; }
+    .status-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .status-item { padding: 10px 12px; }
+    .status-label { font-size: 10px; }
+    .status-value { font-size: 14px; }
+    .card-head { padding: 12px 14px; font-size: 12px; }
+    .card-body { padding: 12px; }
+    .level-value { font-size: 14px; }
+    .config-row { grid-template-columns: 1fr; }
+    .config-save { grid-column: auto; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">R<span>E</span>N</div>
+    <div class="brand-tag">Dashboard</div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" id="tab-pulse" onclick="switchMode('pulse')">Pulse</button>
+    <button class="tab" id="tab-focus" onclick="switchMode('focus')">Focus</button>
+    <button class="tab" id="tab-grind" onclick="switchMode('grind')">Grind</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- Capital config (per mode) -->
+  <div class="config-row">
+    <div class="config-item">
+      <div class="config-label">Mode</div>
+      <div class="config-value" id="cfg-mode">Pulse</div>
+    </div>
+    <div class="config-item">
+      <div class="config-label">Currency</div>
+      <div class="config-value" id="cfg-currency">USD</div>
+    </div>
+    <div class="config-item">
+      <div class="config-label">Starting Capital</div>
+      <input id="cfg-input" type="number" min="0" step="100" placeholder="e.g. 50000">
+    </div>
+    <div class="config-item">
+      <div class="config-label">Currency</div>
+      <select id="cfg-cur">
+        <option value="USD">USD</option>
+        <option value="KES">KES</option>
+      </select>
+    </div>
+    <div class="config-item config-save">
+      <button class="btn btn-approve" onclick="saveCapital()">Save Capital</button>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div class="status-row">
+    <div class="status-item">
+      <div class="status-label">Mode</div>
+      <div class="status-value" id="stat-mode">Pulse</div>
+    </div>
+    <div class="status-item">
+      <div class="status-label">Selected</div>
+      <div class="status-value" id="stat-asset">—</div>
+    </div>
+    <div class="status-item">
+      <div class="status-label">Portfolio Value</div>
+      <div class="status-value" id="stat-balance">—</div>
+    </div>
+    <div class="status-item">
+      <div class="status-label">Total P&L</div>
+      <div class="status-value" id="stat-pnl">—</div>
+    </div>
+  </div>
+
+  <!-- PULSE -->
+  <div class="panel active" id="panel-pulse">
+    <div class="pulse-grid">
+
+      <div class="card">
+        <div class="card-head">
+          <span>Watchlist</span>
+          <button class="btn" onclick="triggerScan()" style="padding:5px 12px;font-size:12px;">Scan</button>
+        </div>
+        <div class="card-body" id="watchlist">
+          <span class="empty">Loading…</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span id="inspect-title">Setup</span>
+          <span class="empty" id="inspect-status"></span>
+        </div>
+        <div class="card-body" id="inspect-body">
+          <span class="empty">Select an asset to view the setup.</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">Trade</div>
+        <div class="card-body" style="flex: 0 0 auto;">
+          <div class="level">
+            <span class="level-label">Entry</span>
+            <span class="level-value" id="val-entry">—</span>
+          </div>
+          <div class="level">
+            <span class="level-label">Stop</span>
+            <span class="level-value" id="val-sl" style="color:var(--red);">—</span>
+          </div>
+          <div class="level">
+            <span class="level-label">Target</span>
+            <span class="level-value" id="val-tp" style="color:var(--green);">—</span>
+          </div>
+          <div class="level">
+            <span class="level-label">R:R</span>
+            <span class="level-value" id="val-ratio">—</span>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:6px;">
+            <button class="btn btn-approve" style="flex:1;" onclick="handleAction('approve')">Approve</button>
+            <button class="btn btn-reject" style="flex:1;" onclick="handleAction('reject')">Reject</button>
+          </div>
+        </div>
+
+        <div class="card-head" style="border-top:1px solid var(--border);">
+          <span>Portfolio — <span id="port-mode-label">Pulse</span></span>
+          <span class="empty" id="portfolio-count" style="font-weight:500;text-transform:none;letter-spacing:0;"></span>
+        </div>
+        <div class="card-body" id="portfolio">
+          <div class="chart-wrap">
+            <svg id="equity-chart" preserveAspectRatio="none" viewBox="0 0 300 100"></svg>
+            <div class="chart-empty" id="chart-empty">No closed trades yet</div>
+          </div>
+
+          <div class="port-stats">
+            <div class="port-stat">
+              <div class="port-stat-label">Realized</div>
+              <div class="port-stat-value" id="ps-realized">—</div>
+            </div>
+            <div class="port-stat">
+              <div class="port-stat-label">Win Rate</div>
+              <div class="port-stat-value" id="ps-winrate">—</div>
+            </div>
+            <div class="port-stat">
+              <div class="port-stat-label">Open</div>
+              <div class="port-stat-value" id="ps-open">0</div>
+            </div>
+            <div class="port-stat">
+              <div class="port-stat-label">Closed</div>
+              <div class="port-stat-value" id="ps-closed">0</div>
+            </div>
+          </div>
+
+          <div id="positions-list" style="display:flex;flex-direction:column;gap:8px;">
+            <span class="empty">No open positions.</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FOCUS -->
+  <div class="panel" id="panel-focus">
+    <div class="focus-grid">
+      <div class="card">
+        <div class="card-head">Notes</div>
+        <div class="card-body">
+          <textarea placeholder="Write research notes…"></textarea>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">Tasks</div>
+        <div class="card-body">
+          <textarea placeholder="Track tasks…"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRIND -->
+  <div class="panel" id="panel-grind">
+    <div class="focus-grid">
+      <div class="card">
+        <div class="card-head">Work Log</div>
+        <div class="card-body">
+          <textarea placeholder="Log client work…"></textarea>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">Proposals</div>
+        <div class="card-body">
+          <textarea placeholder="Draft proposals…"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="log" id="log">Ready.</div>
+
+</main>
+
+<script>
+let selectedAsset = null;
+let currentMode = 'pulse';
+let currentCurrency = 'USD';
+
+// ---------- Logging ----------
+function log(msg) {
+  const el = document.getElementById('log');
+  const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  el.innerHTML += `<br>[${t}] ${msg}`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// ---------- Money formatting ----------
+function currencySymbol(cur) {
+  return cur === 'KES' ? 'KSh ' : '$';
+}
+
+function fmtMoney(n, cur) {
+  const num = Number(n) || 0;
+  const sym = currencySymbol(cur);
+  const sign = num < 0 ? '-' : '';
+  return sign + sym + Math.abs(num).toLocaleString(undefined, {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  });
+}
+
+function fmtSignedMoney(n, cur) {
+  const num = Number(n) || 0;
+  const sym = currencySymbol(cur);
+  return (num >= 0 ? '+' : '-') + sym + Math.abs(num).toLocaleString(undefined, {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  });
+}
+
+// ---------- Mode ----------
+async function syncMode() {
+  try {
+    const res = await fetch('/api/mode');
+    const data = await res.json();
+    if (data.name) {
+      currentMode = data.name.toLowerCase();
+      applyModeUI(currentMode);
+      loadCapitalConfig();
+      loadPortfolio();
+    }
+  } catch (e) { log('Offline'); }
+}
+
+async function switchMode(mode) {
+  currentMode = mode;
+  applyModeUI(mode);
+  selectedAsset = null;
+  document.getElementById('stat-asset').textContent = '—';
+
+  // Reset inspect panel
+  document.getElementById('inspect-title').textContent = 'Setup';
+  document.getElementById('inspect-status').textContent = '';
+  document.getElementById('inspect-body').innerHTML =
+    '<span class="empty">Select an asset to view the setup.</span>';
+  document.getElementById('val-entry').textContent = '—';
+  document.getElementById('val-sl').textContent = '—';
+  document.getElementById('val-tp').textContent = '—';
+  document.getElementById('val-ratio').textContent = '—';
+
+  try {
+    await fetch(`/api/mode/${mode}`, { method: 'POST' });
+    loadCapitalConfig();
+    loadPortfolio();
+  } catch (e) { log('Mode switch failed'); }
+}
+
+function applyModeUI(mode) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-${mode}`)?.classList.add('active');
+  document.getElementById(`panel-${mode}`)?.classList.add('active');
+
+  const label = mode.charAt(0).toUpperCase() + mode.slice(1);
+  document.getElementById('stat-mode').textContent = label;
+  document.getElementById('port-mode-label').textContent = label;
+  document.getElementById('cfg-mode').textContent = label;
+}
+
+// ---------- Capital config ----------
+async function loadCapitalConfig() {
+  try {
+    const res = await fetch(`/api/portfolios/${currentMode}`);
+    const cfg = await res.json();
+    currentCurrency = cfg.currency || 'USD';
+
+    document.getElementById('cfg-currency').textContent = currentCurrency;
+    document.getElementById('cfg-input').value = cfg.starting_balance || '';
+    document.getElementById('cfg-cur').value = currentCurrency;
+  } catch (e) { log('Could not load capital config'); }
+}
+
+async function saveCapital() {
+  const startingBalance = Number(document.getElementById('cfg-input').value);
+  const currency = document.getElementById('cfg-cur').value;
+
+  if (!isFinite(startingBalance) || startingBalance < 0) {
+    log('Enter a valid starting capital');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/portfolios/${currentMode}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ startingBalance, currency })
+    });
+    const data = await res.json();
+    if (!res.ok) { log(`Save failed: ${data.message || res.status}`); return; }
+
+    currentCurrency = currency;
+    log(`${currentMode} capital set to ${currency} ${startingBalance.toLocaleString()}`);
+    loadCapitalConfig();
+    loadPortfolio();
+  } catch (e) { log('Save failed'); }
+}
+
+// ---------- Watchlist ----------
+async function loadWatchlist() {
+  try {
+    const res = await fetch('/api/watchlist');
+    const list = await res.json();
+    const c = document.getElementById('watchlist');
+    if (!list || !list.length) {
+      c.innerHTML = '<span class="empty">No assets.</span>';
+      return;
+    }
+    c.innerHTML = list.map(i => `
+      <div class="item" onclick="inspectAsset('${i.symbol}','${i.name}')">
+        <div>
+          <div class="name">${i.name}</div>
+          <div class="sym">${i.symbol}</div>
+        </div>
+        <span style="color:var(--red);font-size:12px;font-weight:700;">View</span>
+      </div>
+    `).join('');
+  } catch (e) { log('Watchlist failed to load'); }
+}
+
+// ---------- Portfolio (per mode) ----------
+async function loadPortfolio() {
+  try {
+    const res = await fetch(`/api/portfolio?mode=${currentMode}`);
+    const data = await res.json();
+    currentCurrency = data.currency || currentCurrency;
+    renderPortfolio(data);
+  } catch (e) {
+    log('Portfolio failed to load');
+    renderPortfolio({ equity: 0, pnl: 0, positions: [], curve: [], currency: currentCurrency });
+  }
+}
+
+function renderPortfolio(data) {
+  const cur = data.currency || currentCurrency;
+
+  // Portfolio Value = equity
+  document.getElementById('stat-balance').textContent = fmtMoney(data.equity ?? data.balance ?? 0, cur);
+
+  // Total P&L
+  const pnl = Number(data.pnl ?? 0);
+  const pnlEl = document.getElementById('stat-pnl');
+  pnlEl.textContent = fmtSignedMoney(pnl, cur);
+  pnlEl.style.color = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+
+  // Stats strip
+  const realizedEl = document.getElementById('ps-realized');
+  realizedEl.textContent = fmtSignedMoney(data.realizedPnl || 0, cur);
+  realizedEl.style.color = (data.realizedPnl || 0) >= 0 ? 'var(--green)' : 'var(--red)';
+
+  const closed = data.closedCount || 0;
+  const wins = (data.closed || []).filter(t => t.status === 'hit_tp').length;
+  const winRate = closed > 0 ? Math.round((wins / closed) * 100) + '%' : '—';
+  document.getElementById('ps-winrate').textContent = winRate;
+  document.getElementById('ps-open').textContent = data.openCount ?? 0;
+  document.getElementById('ps-closed').textContent = closed;
+
+  // Header count
+  const countEl = document.getElementById('portfolio-count');
+  const openCount = data.openCount ?? 0;
+  countEl.textContent = openCount ? `${openCount} open` : '';
+
+  // Chart
+  renderChart(data.curve || []);
+
+  // Positions
+  const positions = data.positions || [];
+  const listEl = document.getElementById('positions-list');
+  if (!positions.length) {
+    listEl.innerHTML = '<span class="empty">No open positions.</span>';
+  } else {
+    listEl.innerHTML = positions.map(p => {
+      const pnlVal = Number(p.pnl) || 0;
+      const cls = pnlVal > 0 ? 'up' : pnlVal < 0 ? 'down' : 'flat';
+      const pnlStr = pnlVal === 0 ? '—' : fmtSignedMoney(pnlVal, cur);
+      const sub = [p.size, p.entry ? `@ ${p.entry}` : null].filter(Boolean).join(' ');
+      const statusLabel = p.status === 'pending_approval' ? 'Pending'
+                        : p.status === 'approved' ? 'Approved'
+                        : p.status === 'open' ? 'Open'
+                        : p.status;
+      return `
+        <div class="pos">
+          <div style="min-width:0;">
+            <div class="pos-name">${p.name}</div>
+            <div class="pos-sub">${sub || statusLabel}</div>
+          </div>
+          <div class="pos-pnl ${cls}">${pnlStr}</div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+// ---------- Equity chart ----------
+function renderChart(curve) {
+  const svg = document.getElementById('equity-chart');
+  const empty = document.getElementById('chart-empty');
+
+  if (!curve || curve.length < 2) {
+    svg.innerHTML = '';
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const values = curve.map(c => Number(c.value) || 0);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const pad = range * 0.1;
+  const yMin = min - pad;
+  const yMax = max + pad;
+
+  const W = 300, H = 100;
+  const stepX = W / (curve.length - 1);
+
+  const points = curve.map((c, i) => {
+    const v = Number(c.value) || 0;
+    const x = i * stepX;
+    const y = H - ((v - yMin) / (yMax - yMin)) * H;
+    return { x, y };
+  });
+
+  const pathD = points.map((p, i) =>
+    `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)},${p.y.toFixed(2)}`
+  ).join(' ');
+
+  const areaD = `${pathD} L${W},${H} L0,${H} Z`;
+
+  const first = values[0];
+  const last = values[values.length - 1];
+  const up = last >= first;
+  const lineColor = up ? 'var(--green)' : 'var(--red)';
+  const fillColor = up ? 'rgba(31,122,63,0.12)' : 'rgba(193,39,45,0.12)';
+
+  const lastPt = points[points.length - 1];
+
+  svg.innerHTML = `
+    <path d="${areaD}" fill="${fillColor}" stroke="none"></path>
+    <path d="${pathD}" fill="none" stroke="${lineColor}" stroke-width="1.8"
+          stroke-linejoin="round" stroke-linecap="round"></path>
+    <circle cx="${lastPt.x.toFixed(2)}" cy="${lastPt.y.toFixed(2)}" r="2.5" fill="${lineColor}"></circle>
+  `;
+}
+
+// ---------- Inspect asset ----------
+async function inspectAsset(symbol, name) {
+  selectedAsset = { symbol, name };
+  document.getElementById('stat-asset').textContent = name;
+  document.getElementById('inspect-title').textContent = name;
+  document.getElementById('inspect-body').innerHTML = '<span class="empty">Analyzing…</span>';
+  document.getElementById('inspect-status').textContent = '';
+
+  try {
+    const res = await fetch(`/api/analyze/${encodeURIComponent(symbol)}/${encodeURIComponent(name)}`, { method: 'POST' });
+    const d = await res.json();
+
+    if (d.hasSetup === false) {
+      document.getElementById('inspect-body').innerHTML =
+        `<div style="line-height:1.7;">${d.reasoning || d.message || 'No setup.'}</div>`;
+      document.getElementById('inspect-status').textContent = '';
+    } else {
+      document.getElementById('inspect-body').innerHTML =
+        `<div style="line-height:1.7;">${d.reasoning || d.text || 'No setup.'}</div>`;
+      document.getElementById('inspect-status').textContent =
+        (d.status || '').replace(/_/g, ' ').toUpperCase();
+    }
+
+    document.getElementById('val-entry').textContent = d.entry || '—';
+    document.getElementById('val-sl').textContent = d.stopLoss || '—';
+    document.getElementById('val-tp').textContent = d.takeProfit || '—';
+    document.getElementById('val-ratio').textContent = d.ratio || '—';
+  } catch (e) {
+    document.getElementById('inspect-body').innerHTML = '<span class="empty">Analysis failed.</span>';
+  }
+}
+
+// ---------- Approve / Reject ----------
+async function handleAction(action) {
+  if (!selectedAsset) { log('Select an asset first'); return; }
+  try {
+    const res = await fetch(`/api/trades/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: selectedAsset.name, mode: currentMode })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      log(`${action} failed: ${data.error || data.message || res.status}`);
+      return;
+    }
+    log(`${action} — ${selectedAsset.name} (${currentMode})`);
+    loadPortfolio();
+  } catch (e) { log('Action failed'); }
+}
+
+// ---------- Scan ----------
+async function triggerScan() {
+  log('Scanning…');
+  try { await fetch('/api/scan', { method: 'POST' }); } catch (e) { log('Scan failed'); }
+}
+
+// ---------- Init ----------
+window.onload = () => {
+  syncMode();
+  loadWatchlist();
+};
+</script>
+
+</body>
+</html>

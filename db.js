@@ -16,7 +16,8 @@ db.exec(`
     name TEXT UNIQUE NOT NULL,
     active INTEGER DEFAULT 0
   );
-CREATE TABLE IF NOT EXISTS trades (
+
+  CREATE TABLE IF NOT EXISTS trades (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL,
     name TEXT NOT NULL,
@@ -25,9 +26,19 @@ CREATE TABLE IF NOT EXISTS trades (
     stop_loss REAL NOT NULL,
     take_profit REAL NOT NULL,
     ratio TEXT,
-    status TEXT DEFAULT 'open',
+    confidence TEXT,
+    status TEXT DEFAULT 'pending_approval',
+    mode TEXT DEFAULT 'pulse',
+    pnl REAL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     closed_at DATETIME
+  );
+
+  CREATE TABLE IF NOT EXISTS portfolios (
+    mode TEXT PRIMARY KEY,
+    starting_balance REAL NOT NULL DEFAULT 10000,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
 

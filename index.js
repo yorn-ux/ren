@@ -7,15 +7,26 @@ const { getActiveMode, setActiveMode } = require('./modes');
 const { listPending, approveLatest, rejectLatest } = require('./approvals');
 const watchlist = require('./watchlist');
 
+// Import and launch the Express web server automatically
+try {
+  require('./server');
+  console.log('✔ Express Web Server initialized on http://localhost:3000');
+} catch (err) {
+  console.error('⚠️ Could not auto-start server.js:', err.message);
+}
+
 function findAsset(query) {
   const q = query.toLowerCase();
   return watchlist.find(a =>
-    a.name.toLowerCase().includes(q) || q.includes(a.name.toLowerCase().split('/')[0])
+    a.name.toLowerCase().includes(q) || 
+    q.includes(a.name.toLowerCase().split('/')[0]) ||
+    a.symbol.toLowerCase() === q
   );
 }
 
 async function handleCommand(input) {
   const text = input.toLowerCase().trim();
+  if (!text) return;
 
   if (text === 'pending' || text.includes('show pending')) {
     const pending = listPending();
@@ -65,11 +76,13 @@ async function handleCommand(input) {
   }
 
   if (text.includes('mode')) {
-    console.log('Available modes: pulse, focus, grind. Say "switch to pulse" etc.');
     const match = text.match(/(pulse|focus|grind)/);
     if (match) {
       setActiveMode(match[1]);
+      console.log(`Active mode set to: ${match[1]}`);
       speak(`Switched to ${match[1]} mode.`);
+    } else {
+      console.log('Available modes: pulse, focus, grind. Example: "switch to pulse"');
     }
     return;
   }
@@ -81,12 +94,17 @@ async function handleCommand(input) {
     return;
   }
 
-  console.log(`Matched: ${asset.name}`);
+  console.log(`Matched: ${asset.name} (${asset.symbol})`);
 
-  if (text.includes('trade') || text.includes('entry') || text.includes('setup')) {
-    await getTradeRecommendationVoice(asset.symbol, asset.name);
-  } else {
-    await analyzeAssetVoice(asset.symbol, asset.name);
+  try {
+    if (text.includes('trade') || text.includes('entry') || text.includes('setup')) {
+      await getTradeRecommendationVoice(asset.symbol, asset.name);
+    } else {
+      await analyzeAssetVoice(asset.symbol, asset.name);
+    }
+  } catch (err) {
+    console.error(`Execution error for ${asset.name}:`, err.message);
+    speak(`Failed to complete analysis for ${asset.name}. Check logs.`);
   }
 }
 
@@ -109,6 +127,7 @@ function startVoiceLoop() {
     if (heard.toLowerCase().includes('exit') || heard.toLowerCase().includes('stop listening')) {
       console.log('Voice mode stopped. Scheduler still running in background.');
       speak('Voice mode off. Still watching the market in the background.');
+      startTextMenu();
       return;
     }
 
@@ -121,8 +140,8 @@ function startVoiceLoop() {
 function startTextMenu() {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
-  console.log('\n=== Ren — Text Mode ===');
-  console.log('Commands: an asset name | "trade setup on [asset]" | "scan" | "pending" | "approve [asset]" | "reject [asset]" | "switch to [pulse/focus/grind]" | "voice" | "exit"\n');
+  console.log('\n=== Ren — System Operational ===');
+  console.log('Commands: [asset name] | "trade setup on [asset]" | "scan" | "pending" | "approve [asset]" | "reject [asset]" | "switch to [pulse/focus/grind]" | "voice" | "exit"\n');
 
   const ask = () => {
     rl.question('> ', async (input) => {
@@ -139,7 +158,12 @@ function startTextMenu() {
         return;
       }
 
-      await handleCommand(input);
+      try {
+        await handleCommand(input);
+      } catch (err) {
+        console.error("Error processing command:", err);
+      }
+      
       ask();
     });
   };
@@ -148,12 +172,13 @@ function startTextMenu() {
 }
 
 function main() {
-  console.log('=== Ren is starting up ===');
+  console.log('=== REN SYSTEM STARTUP ===');
   const activeMode = getActiveMode();
-  console.log(`Active mode: ${activeMode ? activeMode.name : 'none set'}`);
+  console.log(`Active mode: ${activeMode ? activeMode.name : 'pulse'}`);
 
   startScheduler();
   startTextMenu();
 }
 
 main();
+

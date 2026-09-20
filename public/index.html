@@ -6,145 +6,92 @@
 <title>Ren</title>
 <style>
   :root {
-    --bg: #08090b;
-    --surface: #131418;
-    --surface-hover: #1a1c22;
-    --border: #23252d;
-    --text: #eaeaee;
-    --text-dim: #8b8d98;
-    --text-faint: #55575f;
-    --accent: #7c9eff;
-    --accent-dim: #2a3550;
-    --green: #4ade80;
-    --green-dim: #133d24;
-    --red: #f87171;
-    --red-dim: #3d1717;
-    --amber: #fbbf24;
+    --bg: #08090b; --surface: #131418; --surface-hover: #1a1c22;
+    --border: #23252d; --text: #eaeaee; --text-dim: #8b8d98; --text-faint: #55575f;
+    --accent: #7c9eff; --accent-dim: #2a3550;
+    --green: #4ade80; --green-dim: #133d24;
+    --red: #f87171; --red-dim: #3d1717;
+    --amber: #fbbf24; --amber-dim: rgba(251,191,36,0.12);
+    --purple: #c084fc; --purple-dim: rgba(192,132,252,0.12);
     --radius: 14px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    padding: 0 0 40px 0;
+    background: var(--bg); color: var(--text); padding: 0 0 40px 0;
     -webkit-font-smoothing: antialiased;
   }
-
-  /* Header */
   .header {
-    padding: 24px 18px 16px;
-    position: sticky;
-    top: 0;
-    background: linear-gradient(180deg, var(--bg) 80%, transparent);
-    z-index: 10;
+    padding: 24px 18px 16px; position: sticky; top: 0;
+    background: linear-gradient(180deg, var(--bg) 80%, transparent); z-index: 10;
   }
   .brand { display: flex; align-items: center; gap: 10px; }
   .brand-dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    background: var(--green);
-    box-shadow: 0 0 8px var(--green);
-    animation: pulse 2s infinite;
+    width: 10px; height: 10px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite;
   }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
   h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.3px; }
   .tagline { color: var(--text-faint); font-size: 12px; margin-top: 2px; }
 
-  /* Mode tabs */
   .mode-tabs {
-    display: flex;
-    gap: 6px;
-    margin: 18px 18px 4px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 4px;
+    display: flex; gap: 6px; margin: 18px 18px 4px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 4px;
   }
   .mode-tab {
-    flex: 1;
-    text-align: center;
-    padding: 10px 6px;
-    border-radius: 9px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-dim);
-    cursor: pointer;
-    transition: all 0.15s ease;
-    border: none;
-    background: none;
+    flex: 1; text-align: center; padding: 10px 6px; border-radius: 9px;
+    font-size: 13px; font-weight: 600; color: var(--text-dim);
+    cursor: pointer; transition: all 0.15s ease; border: none; background: none;
   }
-  .mode-tab.active {
-    background: var(--accent-dim);
-    color: var(--accent);
-  }
+  .mode-tab.active { background: var(--accent-dim); color: var(--accent); }
   .mode-tab .tab-sub { display: block; font-size: 10px; font-weight: 400; opacity: 0.7; margin-top: 1px; }
 
-  /* Content */
+  .sub-tabs {
+    display: flex; gap: 6px; margin: 12px 18px 0; overflow-x: auto;
+  }
+  .sub-tab {
+    white-space: nowrap; padding: 8px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; color: var(--text-dim);
+    background: var(--surface); border: 1px solid var(--border); cursor: pointer;
+  }
+  .sub-tab.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-dim); }
+
   .content { padding: 0 18px; }
-  .section { margin-top: 26px; }
+  .section { margin-top: 22px; }
   .section-title {
-    font-size: 12px;
-    text-transform: uppercase;
-    color: var(--text-faint);
-    letter-spacing: 0.8px;
-    margin-bottom: 10px;
-    font-weight: 600;
+    font-size: 12px; text-transform: uppercase; color: var(--text-faint);
+    letter-spacing: 0.8px; margin-bottom: 10px; font-weight: 600;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .section-count {
+    font-size: 10px; background: var(--surface-hover); color: var(--text-dim);
+    padding: 2px 8px; border-radius: 10px; font-weight: 700;
   }
 
   .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
-    margin-bottom: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
   }
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .asset-name { font-weight: 600; font-size: 15px; }
-  .direction {
-    font-size: 11px;
-    padding: 3px 9px;
-    border-radius: 20px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-  }
+  .direction { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 700; letter-spacing: 0.3px; }
   .buy { background: var(--green-dim); color: var(--green); }
   .sell { background: var(--red-dim); color: var(--red); }
 
-  .detail-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 13px;
-    color: var(--text-dim);
-    margin: 5px 0;
-    gap: 12px;
-  }
+  .detail-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-dim); margin: 5px 0; gap: 12px; }
   .detail-row span:last-child { color: var(--text); text-align: right; font-weight: 500; }
 
   .reasoning-text {
-    font-size: 13px;
-    color: var(--text-dim);
-    line-height: 1.5;
-    margin-bottom: 10px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border);
+    font-size: 13px; color: var(--text-dim); line-height: 1.5;
+    margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
   }
 
   .buttons { display: flex; gap: 8px; margin-top: 12px; }
   button {
-    border: none;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 11px;
-    color: var(--text);
-    background: var(--surface-hover);
-    transition: opacity 0.15s;
+    border: none; border-radius: 10px; font-size: 13px; font-weight: 600;
+    cursor: pointer; padding: 11px; color: var(--text);
+    background: var(--surface-hover); transition: opacity 0.15s;
   }
   button:active { opacity: 0.7; }
   button:disabled { opacity: 0.4; }
@@ -153,54 +100,44 @@
   .analyze-btn { padding: 7px 14px; font-size: 12px; background: var(--accent-dim); color: var(--accent); }
   .scan-btn { width: 100%; background: var(--accent-dim); color: var(--accent); padding: 13px; font-size: 14px; }
 
-  .empty {
-    color: var(--text-faint);
-    font-size: 13px;
-    text-align: center;
-    padding: 28px 20px;
-  }
+  .empty { color: var(--text-faint); font-size: 13px; text-align: center; padding: 28px 20px; }
 
   .stat-row { display: flex; gap: 10px; }
   .stat-card {
-    flex: 1;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px 12px;
-    text-align: center;
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 12px; text-align: center;
   }
   .stat-value { font-size: 22px; font-weight: 700; color: var(--accent); }
   .stat-label { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
 
   .status-badge {
-    font-size: 10px;
-    padding: 3px 8px;
-    border-radius: 20px;
-    background: var(--surface-hover);
-    color: var(--text-dim);
-    font-weight: 600;
-    text-transform: uppercase;
+    font-size: 10px; padding: 3px 8px; border-radius: 20px;
+    background: var(--surface-hover); color: var(--text-dim);
+    font-weight: 600; text-transform: uppercase;
   }
-  .status-badge.approved, .status-badge.hit_tp { background: var(--green-dim); color: var(--green); }
+  .status-badge.approved, .status-badge.open { background: var(--green-dim); color: var(--green); }
+  .status-badge.hit_tp { background: var(--green-dim); color: var(--green); }
   .status-badge.rejected, .status-badge.hit_sl { background: var(--red-dim); color: var(--red); }
-  .status-badge.pending_approval { background: rgba(251,191,36,0.12); color: var(--amber); }
+  .status-badge.pending_approval { background: var(--amber-dim); color: var(--amber); }
 
-  /* Coming soon panel for focus/grind */
-  .coming-soon {
-    text-align: center;
-    padding: 60px 24px;
+  .crt-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; padding: 4px 10px; border-radius: 20px;
+    background: var(--purple-dim); color: var(--purple);
+    font-weight: 600; margin-top: 8px;
   }
+  .crt-badge.mss-confirmed { background: rgba(74,222,128,0.12); color: var(--green); }
+  .crt-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .coming-soon { text-align: center; padding: 60px 24px; }
   .coming-soon-icon { font-size: 40px; margin-bottom: 14px; opacity: 0.5; }
   .coming-soon-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
   .coming-soon-text { font-size: 13px; color: var(--text-faint); line-height: 1.5; max-width: 280px; margin: 0 auto; }
 
   .loading-spin {
-    display: inline-block;
-    width: 14px; height: 14px;
-    border: 2px solid var(--text-faint);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid var(--text-faint); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.6s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
@@ -216,58 +153,88 @@
 </div>
 
 <div class="mode-tabs">
-  <button class="mode-tab" id="tab-pulse" onclick="switchMode('pulse')">
-    Pulse<span class="tab-sub">Markets</span>
-  </button>
-  <button class="mode-tab" id="tab-focus" onclick="switchMode('focus')">
-    Focus<span class="tab-sub">Study</span>
-  </button>
-  <button class="mode-tab" id="tab-grind" onclick="switchMode('grind')">
-    Grind<span class="tab-sub">Freelance</span>
-  </button>
+  <button class="mode-tab" id="tab-pulse" onclick="switchMode('pulse')">Pulse<span class="tab-sub">Markets</span></button>
+  <button class="mode-tab" id="tab-focus" onclick="switchMode('focus')">Focus<span class="tab-sub">Study</span></button>
+  <button class="mode-tab" id="tab-grind" onclick="switchMode('grind')">Grind<span class="tab-sub">Freelance</span></button>
 </div>
 
 <div class="content">
 
-  <!-- PULSE MODE VIEW -->
   <div id="pulse-view">
-    <div class="section">
-      <div class="section-title">Performance</div>
-      <div class="stat-row" id="stats-container"></div>
+
+    <div class="sub-tabs">
+      <div class="sub-tab active" data-tab="overview" onclick="switchTab('overview')">Overview</div>
+      <div class="sub-tab" data-tab="pending" onclick="switchTab('pending')">Pending</div>
+      <div class="sub-tab" data-tab="approved" onclick="switchTab('approved')">Approved</div>
+      <div class="sub-tab" data-tab="history" onclick="switchTab('history')">History</div>
+      <div class="sub-tab" data-tab="watchlist" onclick="switchTab('watchlist')">Watchlist</div>
     </div>
 
-    <div class="section">
-      <div class="section-title">Pending Approval</div>
-      <div id="pending-container"><div class="empty"><span class="loading-spin"></span></div></div>
+    <div id="tab-overview" class="tab-panel">
+      <div class="section">
+        <div class="section-title">Performance</div>
+        <div class="stat-row" id="stats-container"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Pending Approval <span class="section-count" id="count-pending">0</span></div>
+        <div id="pending-preview"><div class="empty"><span class="loading-spin"></span></div></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Live / Approved Trades <span class="section-count" id="count-approved">0</span></div>
+        <div id="approved-preview"><div class="empty"><span class="loading-spin"></span></div></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">CRT / Turtle Soup Setups</div>
+        <div id="crt-container"><div class="empty">Analyze an asset to check for CRT setups.</div></div>
+      </div>
     </div>
 
-    <div class="section">
-      <div class="section-title">Watchlist</div>
-      <button class="scan-btn" onclick="scanNow()">Scan Full Watchlist</button>
-      <div id="watchlist-container" style="margin-top:10px;"></div>
+    <div id="tab-pending" class="tab-panel" style="display:none;">
+      <div class="section">
+        <div class="section-title">Pending Approval <span class="section-count" id="count-pending-full">0</span></div>
+        <div id="pending-container"><div class="empty"><span class="loading-spin"></span></div></div>
+      </div>
     </div>
 
-    <div class="section">
-      <div class="section-title">Recent Trades</div>
-      <div id="trades-container"><div class="empty"><span class="loading-spin"></span></div></div>
+    <div id="tab-approved" class="tab-panel" style="display:none;">
+      <div class="section">
+        <div class="section-title">Approved Trades — Entry / SL / TP / Ratio <span class="section-count" id="count-approved-full">0</span></div>
+        <div id="approved-container"><div class="empty"><span class="loading-spin"></span></div></div>
+      </div>
     </div>
+
+    <div id="tab-history" class="tab-panel" style="display:none;">
+      <div class="section">
+        <div class="section-title">Trade History <span class="section-count" id="count-history">0</span></div>
+        <div id="history-container"><div class="empty"><span class="loading-spin"></span></div></div>
+      </div>
+    </div>
+
+    <div id="tab-watchlist" class="tab-panel" style="display:none;">
+      <div class="section">
+        <button class="scan-btn" onclick="scanNow()">Scan Full Watchlist</button>
+        <div id="watchlist-container" style="margin-top:14px;"></div>
+      </div>
+    </div>
+
   </div>
 
-  <!-- FOCUS MODE VIEW -->
   <div id="focus-view" style="display:none;">
     <div class="card coming-soon">
       <div class="coming-soon-icon">📘</div>
       <div class="coming-soon-title">Focus mode isn't built yet</div>
-      <div class="coming-soon-text">This will track deadlines, coursework, and study reminders. Nothing here yet — just the mode switch, ready for when we build it.</div>
+      <div class="coming-soon-text">This will track deadlines, coursework, and study reminders.</div>
     </div>
   </div>
 
-  <!-- GRIND MODE VIEW -->
   <div id="grind-view" style="display:none;">
     <div class="card coming-soon">
       <div class="coming-soon-icon">💼</div>
       <div class="coming-soon-title">Grind mode isn't built yet</div>
-      <div class="coming-soon-text">This will surface freelance opportunities and track client follow-ups. Nothing here yet — just the mode switch, ready for when we build it.</div>
+      <div class="coming-soon-text">This will surface freelance opportunities and track client follow-ups.</div>
     </div>
   </div>
 
@@ -275,6 +242,9 @@
 
 <script>
 let currentMode = 'pulse';
+let currentTab = 'overview';
+let allTrades = [];
+const crtResults = {};
 
 const MODE_TAGLINES = {
   pulse: 'Watching the markets',
@@ -297,22 +267,24 @@ async function switchMode(name) {
 
 function renderModeUI() {
   document.getElementById('mode-tagline').textContent = MODE_TAGLINES[currentMode] || '';
-
   ['pulse', 'focus', 'grind'].forEach(m => {
     document.getElementById(`tab-${m}`).classList.toggle('active', m === currentMode);
     document.getElementById(`${m}-view`).style.display = m === currentMode ? 'block' : 'none';
   });
+  if (currentMode === 'pulse') refreshAllPulseData();
+}
 
-  if (currentMode === 'pulse') {
-    loadStats();
-    loadPending();
-    loadTrades();
-    loadWatchlist();
-  }
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+  document.getElementById(`tab-${tab}`).style.display = 'block';
+
+  if (tab === 'watchlist') loadWatchlist();
 }
 
 async function loadStats() {
-  const res = await fetch('/api/stats');
+  const res = await fetch(`/api/stats?mode=${currentMode}`);
   const stats = await res.json();
   document.getElementById('stats-container').innerHTML = ['1:2', '1:3'].map(ratio => `
     <div class="stat-card">
@@ -322,53 +294,75 @@ async function loadStats() {
   `).join('');
 }
 
-async function loadPending() {
-  const res = await fetch('/api/pending');
-  const pending = await res.json();
-  const container = document.getElementById('pending-container');
+async function loadAllTrades() {
+  const res = await fetch(`/api/trades?mode=${currentMode}`);
+  allTrades = await res.json();
+}
 
-  if (pending.length === 0) {
-    container.innerHTML = '<div class="empty">No trades pending approval.</div>';
-    return;
-  }
-
-  container.innerHTML = pending.map(t => `
+function tradeRowHtml(t, showActions) {
+  const dirClass = t.direction.toLowerCase() === 'sell' ? 'sell' : 'buy';
+  return `
     <div class="card">
       <div class="card-header">
         <span class="asset-name">${t.name}</span>
-        <span class="direction ${t.direction.toLowerCase()}">${t.direction}</span>
+        <span class="direction ${dirClass}">${t.direction}</span>
       </div>
       <div class="detail-row"><span>Entry</span><span>${t.entry}</span></div>
       <div class="detail-row"><span>Stop Loss</span><span>${t.stop_loss}</span></div>
       <div class="detail-row"><span>Take Profit</span><span>${t.take_profit}</span></div>
       <div class="detail-row"><span>Ratio</span><span>${t.ratio}</span></div>
-      <div class="buttons">
-        <button class="approve-btn" onclick="approveTrade(${t.id})">Approve</button>
-        <button class="reject-btn" onclick="rejectTrade(${t.id})">Reject</button>
-      </div>
+      <div class="detail-row"><span>Status</span><span class="status-badge ${t.status}">${t.status.replace('_',' ')}</span></div>
+      <div class="detail-row"><span>Logged</span><span>${new Date(t.created_at).toLocaleString()}</span></div>
+      ${showActions ? `
+        <div class="buttons">
+          <button class="approve-btn" onclick="approveTrade(${t.id})">Approve</button>
+          <button class="reject-btn" onclick="rejectTrade(${t.id})">Reject</button>
+        </div>
+      ` : ''}
     </div>
-  `).join('');
+  `;
 }
 
-async function loadTrades() {
-  const res = await fetch('/api/trades');
-  const trades = await res.json();
-  const container = document.getElementById('trades-container');
+function renderPending() {
+  const pending = allTrades.filter(t => t.status === 'pending_approval');
+  document.getElementById('count-pending').textContent = pending.length;
+  document.getElementById('count-pending-full').textContent = pending.length;
 
-  if (trades.length === 0) {
-    container.innerHTML = '<div class="empty">No trades yet.</div>';
-    return;
-  }
+  const previewHtml = pending.length
+    ? pending.slice(0, 2).map(t => tradeRowHtml(t, true)).join('') +
+      (pending.length > 2 ? `<button onclick="switchTab('pending')" style="width:100%;background:var(--surface-hover);">View all ${pending.length}</button>` : '')
+    : '<div class="empty">No trades pending approval.</div>';
 
-  container.innerHTML = trades.slice(0, 15).map(t => `
-    <div class="card">
-      <div class="card-header">
-        <span class="asset-name">${t.name}</span>
-        <span class="status-badge ${t.status}">${t.status.replace('_', ' ')}</span>
-      </div>
-      <div class="detail-row"><span>${t.direction} @ ${t.entry}</span><span>${t.ratio}</span></div>
-    </div>
-  `).join('');
+  document.getElementById('pending-preview').innerHTML = previewHtml;
+  document.getElementById('pending-container').innerHTML = pending.length
+    ? pending.map(t => tradeRowHtml(t, true)).join('')
+    : '<div class="empty">No trades pending approval.</div>';
+}
+
+function renderApproved() {
+  // approvals.js sets manually-approved trades to 'open'; brain.js auto-approve sets 'approved'
+  const approved = allTrades.filter(t => t.status === 'open' || t.status === 'approved');
+  document.getElementById('count-approved').textContent = approved.length;
+  document.getElementById('count-approved-full').textContent = approved.length;
+
+  const previewHtml = approved.length
+    ? approved.slice(0, 2).map(t => tradeRowHtml(t, false)).join('') +
+      (approved.length > 2 ? `<button onclick="switchTab('approved')" style="width:100%;background:var(--surface-hover);">View all ${approved.length}</button>` : '')
+    : '<div class="empty">No approved trades currently being tracked.</div>';
+
+  document.getElementById('approved-preview').innerHTML = previewHtml;
+  document.getElementById('approved-container').innerHTML = approved.length
+    ? approved.map(t => tradeRowHtml(t, false)).join('')
+    : '<div class="empty">No approved trades currently being tracked.</div>';
+}
+
+function renderHistory() {
+  const history = allTrades.filter(t => ['hit_tp', 'hit_sl', 'rejected'].includes(t.status));
+  document.getElementById('count-history').textContent = history.length;
+
+  document.getElementById('history-container').innerHTML = history.length
+    ? history.map(t => tradeRowHtml(t, false)).join('')
+    : '<div class="empty">No closed or rejected trades yet.</div>';
 }
 
 async function loadWatchlist() {
@@ -386,6 +380,33 @@ async function loadWatchlist() {
   `).join('');
 }
 
+function renderCRTSection() {
+  const container = document.getElementById('crt-container');
+  const entries = Object.entries(crtResults).filter(([_, c]) => c && c.hasSetup);
+
+  if (entries.length === 0) {
+    container.innerHTML = '<div class="empty">No CRT / Turtle Soup setups detected yet. Analyze assets to check.</div>';
+    return;
+  }
+
+  container.innerHTML = entries.map(([name, c]) => `
+    <div class="card">
+      <div class="card-header">
+        <span class="asset-name">${name}</span>
+        <span class="direction ${c.direction.toLowerCase() === 'sell' ? 'sell' : 'buy'}">${c.direction}</span>
+      </div>
+      <div class="detail-row"><span>Daily Range</span><span>${c.dailyRange.low.toFixed(5)} - ${c.dailyRange.high.toFixed(5)}</span></div>
+      <div class="detail-row"><span>Sweep</span><span>${c.sweep.type} @ ${c.sweep.wickPrice.toFixed(5)}</span></div>
+      <div class="crt-badge ${c.mssConfirmed ? 'mss-confirmed' : ''}">
+        <span class="crt-dot"></span>
+        MSS ${c.mssConfirmed ? 'Confirmed' : 'Not Yet Confirmed'}
+      </div>
+      <div class="detail-row" style="margin-top:8px;"><span>Entry</span><span>${c.entry.toFixed ? c.entry.toFixed(5) : c.entry}</span></div>
+      <div class="detail-row"><span>SL / Target</span><span>${c.stopLoss.toFixed(5)} / ${c.takeProfit.toFixed(5)}</span></div>
+    </div>
+  `).join('');
+}
+
 async function analyzeAsset(symbol, name, btn) {
   btn.innerHTML = '<span class="loading-spin"></span>';
   btn.disabled = true;
@@ -397,19 +418,23 @@ async function analyzeAsset(symbol, name, btn) {
 
     const resultDiv = document.getElementById(`result-${name.replace(/[^a-zA-Z0-9]/g, '')}`);
     if (!result.hasSetup) {
-      resultDiv.innerHTML = `<div class="detail-row" style="margin-top:8px;"><span>${result.message || 'No setup detected'}</span></div>`;
-      return;
+      resultDiv.innerHTML = `<div class="detail-row" style="margin-top:8px;"><span>${result.message || result.reasoning || 'No setup detected'}</span></div>`;
+      crtResults[name] = null;
+    } else {
+      resultDiv.innerHTML = `
+        <div class="reasoning-text" style="margin-top:10px;">${result.text}</div>
+        <div class="detail-row"><span>Entry</span><span>${result.entry}</span></div>
+        <div class="detail-row"><span>Stop Loss / Take Profit</span><span>${result.stopLoss} / ${result.takeProfit}</span></div>
+        <div class="detail-row"><span>Ratio / Confidence</span><span>${result.ratio} / ${result.confidence}</span></div>
+        <div class="detail-row"><span>Status</span><span class="status-badge ${result.status}">${result.status.replace('_',' ')}</span></div>
+        ${result.crt && result.crt.hasSetup ? `<div class="crt-badge ${result.crt.mssConfirmed ? 'mss-confirmed' : ''}"><span class="crt-dot"></span>CRT ${result.crt.direction} sweep detected</div>` : ''}
+        ${result.news && result.news.available ? `<div class="detail-row" style="margin-top:8px;"><span>News Sentiment</span><span>${result.news.label} (${result.news.averageScore})</span></div>` : ''}
+      `;
+      crtResults[name] = result.crt || null;
     }
 
-    resultDiv.innerHTML = `
-      <div class="reasoning-text" style="margin-top:10px;">${result.text}</div>
-      <div class="detail-row"><span>Entry</span><span>${result.entry}</span></div>
-      <div class="detail-row"><span>Stop Loss / Take Profit</span><span>${result.stopLoss} / ${result.takeProfit}</span></div>
-      <div class="detail-row"><span>Ratio / Confidence</span><span>${result.ratio} / ${result.confidence}</span></div>
-      <div class="detail-row"><span>Status</span><span class="status-badge ${result.status}">${result.status.replace('_',' ')}</span></div>
-    `;
-    loadPending();
-    loadTrades();
+    renderCRTSection();
+    await refreshAllPulseData();
   } catch (err) {
     btn.textContent = 'Analyze';
     btn.disabled = false;
@@ -418,13 +443,31 @@ async function analyzeAsset(symbol, name, btn) {
 }
 
 async function approveTrade(id) {
-  await fetch(`/api/approve/${id}`, { method: 'POST' });
-  loadPending(); loadTrades(); loadStats();
+  const trade = allTrades.find(t => t.id === id);
+  if (!trade) { alert('Trade not found'); return; }
+
+  const res = await fetch('/api/trades/approve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: trade.name, mode: currentMode })
+  });
+  const data = await res.json();
+  if (!res.ok) { alert('Approve failed: ' + (data.message || res.status)); return; }
+  await refreshAllPulseData();
 }
 
 async function rejectTrade(id) {
-  await fetch(`/api/reject/${id}`, { method: 'POST' });
-  loadPending(); loadTrades();
+  const trade = allTrades.find(t => t.id === id);
+  if (!trade) { alert('Trade not found'); return; }
+
+  const res = await fetch('/api/trades/reject', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: trade.name, mode: currentMode })
+  });
+  const data = await res.json();
+  if (!res.ok) { alert('Reject failed: ' + (data.message || res.status)); return; }
+  await refreshAllPulseData();
 }
 
 async function scanNow() {
@@ -432,11 +475,19 @@ async function scanNow() {
   btn.innerHTML = '<span class="loading-spin"></span> Scanning...';
   await fetch('/api/scan', { method: 'POST' });
   setTimeout(() => { btn.textContent = 'Scan Full Watchlist'; }, 2000);
-  alert('Scan started in the background — takes a few minutes. Pending/Trades will update automatically.');
+  alert('Scan started in the background — takes a few minutes. Refresh tabs shortly to see results.');
+}
+
+async function refreshAllPulseData() {
+  await loadAllTrades();
+  loadStats();
+  renderPending();
+  renderApproved();
+  renderHistory();
 }
 
 loadMode();
-setInterval(() => { if (currentMode === 'pulse') { loadPending(); loadTrades(); loadStats(); } }, 15000);
+setInterval(() => { if (currentMode === 'pulse') refreshAllPulseData(); }, 15000);
 </script>
 
 </body>
