@@ -8,6 +8,7 @@ const { getPerformanceStats } = require('./outcomes');
 const { getCRTSetup } = require('./crt');
 const { getNewsSentiment } = require('./news');
 const { calculatePositionSize } = require('./positionSize');
+const { isMarketOpenFor } = require('./marketHours');
 const { speak } = require('./voice');
 const db = require('./db');
 const watchlist = require('./watchlist');
@@ -99,6 +100,10 @@ function getExistingPosition(symbol, currentPrice) {
 }
 
 async function analyzeAsset(symbol, name) {
+  if (!isMarketOpenFor(symbol)) {
+    return `${name} market is currently closed (weekend). No fresh analysis run — this would be stale data.`;
+  }
+
   const ind = await getIndicators(symbol);
   if (!ind.rsi14) throw new Error(`Not enough price history for ${name} to calculate RSI`);
 
@@ -134,6 +139,15 @@ function decideStatus(ratio, confidence, stats) {
 }
 
 async function getTradeRecommendation(symbol, name = symbol, includeNews = false) {
+  if (!isMarketOpenFor(symbol)) {
+    return {
+      hasSetup: false,
+      marketClosed: true,
+      message: `${name} market is currently closed (weekend closure). No analysis run — any price shown would be stale Friday-close data, not live. Try again after the market reopens Sunday 5pm EST.`,
+      text: `${name}'s market is closed right now — this is a weekend closure for forex/commodities. I'm not running analysis on stale data. Check back after the market reopens.`,
+    };
+  }
+
   const zone = await getZoneAnalysis(symbol);
   if (!zone.hasSetup) {
     return { hasSetup: false, message: zone.message, text: zone.message };

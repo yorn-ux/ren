@@ -1,6 +1,7 @@
 const db = require('./db');
 const { getIndicators } = require('./indicators');
 const { notify } = require('./notify');
+const { isMarketOpenFor } = require('./marketHours');
 
 const WATCHABLE_STATUSES = ['pending_approval', 'approved', 'open'];
 
@@ -13,6 +14,10 @@ async function checkEntryAlerts() {
   const triggered = [];
 
   for (const trade of trades) {
+    if (!isMarketOpenFor(trade.symbol)) {
+      continue; // skip stale weekend data entirely — don't check, don't alert
+    }
+
     try {
       const ind = await getIndicators(trade.symbol);
       const currentPrice = ind.price;
