@@ -79,7 +79,6 @@ function getExistingPosition(symbol, currentPrice) {
   const tp = Number(existing.take_profit);
   const isBuy = existing.direction === 'BUY';
 
-  // How far price has moved from entry toward target vs toward stop, as a rough progress %
   const totalDistanceToTP = Math.abs(tp - entry);
   const movedTowardTP = isBuy ? (currentPrice - entry) : (entry - currentPrice);
   const progressPercent = totalDistanceToTP > 0
@@ -95,7 +94,7 @@ function getExistingPosition(symbol, currentPrice) {
     ratio: existing.ratio,
     status: existing.status,
     createdAt: existing.created_at,
-    progressPercent, // negative = moving toward stop loss, positive = moving toward target
+    progressPercent,
   };
 }
 
@@ -140,21 +139,35 @@ async function getTradeRecommendation(symbol, name = symbol, includeNews = false
     return { hasSetup: false, message: zone.message, text: zone.message };
   }
 
+  // Duplicate-trade guard: if an active trade already exists in the SAME
+  // direction, don't log a second one. Opposite-direction setups (genuine
+  // reversal signals) still proceed normally.
+  const existingSameDirection = getExistingPosition(symbol, zone.currentPrice);
+
+  if (existingSameDirection && existingSameDirection.direction === zone.direction) {
+    return {
+      hasSetup: false,
+      duplicateBlocked: true,
+      existingPosition: existingSameDirection,
+      message: `Already have an active ${existingSameDirection.direction} trade on ${name} (entry ${existingSameDirection.entry}, ${existingSameDirection.progressPercent}% toward target, logged ${existingSameDirection.createdAt}). Skipping a duplicate ${zone.direction} setup — same direction, no new trade logged. Let the existing one play out or manually review it in the Approved/History tabs.`,
+      text: `Already tracking a ${existingSameDirection.direction} trade on ${name} from ${existingSameDirection.createdAt}, currently ${existingSameDirection.progressPercent}% of the way to target. This new setup points the same direction, so I'm not logging a duplicate. Check the existing trade before deciding anything new here.`,
+    };
+  }
+
   const [sr, liquidity] = await Promise.all([
     getSupportResistance(symbol),
     getLiquiditySweeps(symbol),
   ]);
   const stats = getPerformanceStats();
   const crt = await getCRTSetup(symbol, name).catch(() => ({ hasSetup: false }));
-  const existingPosition = getExistingPosition(symbol, zone.currentPrice);
 
   let news = { available: false, message: 'News check skipped for this request.' };
   if (includeNews) {
     news = await getNewsSentiment(symbol).catch(err => ({ available: false, message: err.message }));
   }
 
-  const existingPositionText = existingPosition
-    ? `You already have a ${existingPosition.status.replace('_', ' ')} ${existingPosition.direction} trade on this asset from ${existingPosition.createdAt}. Entry: ${existingPosition.entry}, Stop Loss: ${existingPosition.stopLoss}, Take Profit: ${existingPosition.takeProfit}, Ratio: ${existingPosition.ratio}. Current progress: ${existingPosition.progressPercent}% of the way from entry toward target (negative means it has moved toward the stop loss instead).`
+  const existingPositionText = existingSameDirection
+    ? `You already have a ${existingSameDirection.status.replace('_', ' ')} ${existingSameDirection.direction} trade on this asset from ${existingSameDirection.createdAt}. Entry: ${existingSameDirection.entry}, Stop Loss: ${existingSameDirection.stopLoss}, Take Profit: ${existingSameDirection.takeProfit}, Ratio: ${existingSameDirection.ratio}. Current progress: ${existingSameDirection.progressPercent}% of the way from entry toward target (negative means it has moved toward the stop loss instead). NOTE: this new setup is the OPPOSITE direction, which is why it's being shown as a distinct signal rather than blocked as a duplicate.`
     : 'No existing active trade on this asset currently.';
 
   const dataContext = `Asset: ${name} (${symbol})
@@ -203,8 +216,7 @@ ${news.available
 
 YOUR TASK: Decide whether the 1:2 or 1:3 risk-reward ratio is more realistic for THIS specific setup, based on full confluence — not a default preference for the bigger number.
 
-CRITICAL FIRST CHECK — Existing Position:
-If there is already an existing active trade on this asset, address this FIRST, before anything else: state clearly whether the user should WAIT for the existing trade to play out, or whether this NEW setup is compelling enough to consider alongside/instead of it. Consider: is the existing trade already near its target (let it run) or near its stop (risky to add exposure)? Does the new setup agree with or contradict the existing trade's direction? Opening two trades in the same direction on the same asset doubles risk exposure; opening opposite directions creates a conflicting position. Be direct about this — it's the most important practical question before any new numbers matter.
+IMPORTANT CONTEXT: If an existing position is noted above as the OPPOSITE direction to this new setup, acknowledge that clearly first — this represents a potential reversal signal and the user should understand the existing trade may be at risk of reversing before deciding on this new setup.
 
 Then consider ALL of these for the ratio decision:
 - If other supply/demand zones sit between entry and the 1:3 target, favor 1:2.
@@ -216,7 +228,7 @@ Then consider ALL of these for the ratio decision:
 - If a CRT/Turtle Soup setup is detected AND its direction matches this trade's direction, this is a strong named-strategy confluence signal — especially if MSS is confirmed. This should push toward higher confidence. If MSS is not yet confirmed, weight it less.
 - If news sentiment is available and STRONGLY contradicts this trade's direction, reduce confidence and favor 1:2 regardless of technicals. If news aligns, it supports higher confidence and 1:3. If unavailable, rely on technicals alone.
 
-First, write 4-6 short sentences of plain-language reasoning: start with the existing-position guidance if one exists, then cover the other factors above.
+First, write 4-6 short sentences of plain-language reasoning: address the opposite-direction existing position first if one exists, then cover the other factors above.
 
 Then end your response with EXACTLY this block, filled in with real numbers (no extra text after it):
 
@@ -249,7 +261,7 @@ CONFIDENCE: [high/medium/low]
     status,
     crt,
     news,
-    existingPosition,
+    existingPosition: existingSameDirection,
     ...parsed,
   };
 }
