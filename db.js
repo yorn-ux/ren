@@ -26,20 +26,25 @@ db.exec(`
     stop_loss REAL NOT NULL,
     take_profit REAL NOT NULL,
     ratio TEXT,
-    confidence TEXT,
-    status TEXT DEFAULT 'pending_approval',
-    mode TEXT DEFAULT 'pulse',
-    pnl REAL,
+    status TEXT DEFAULT 'open',
+    entry_alert_sent INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     closed_at DATETIME
   );
-
-  CREATE TABLE IF NOT EXISTS portfolios (
-    mode TEXT PRIMARY KEY,
-    starting_balance REAL NOT NULL DEFAULT 10000,
-    currency TEXT NOT NULL DEFAULT 'USD',
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
 `);
+
+// ALTER TABLE guard: CREATE TABLE IF NOT EXISTS won't add new columns to an
+// already-existing table, so this ensures entry_alert_sent exists even on a
+// database created before this column was added.
+try {
+  const cols = db.prepare('PRAGMA table_info(trades)').all();
+  const hasColumn = cols.some(c => c.name === 'entry_alert_sent');
+  if (!hasColumn) {
+    db.exec('ALTER TABLE trades ADD COLUMN entry_alert_sent INTEGER DEFAULT 0');
+    console.log('Migrated: added entry_alert_sent column to trades table');
+  }
+} catch (err) {
+  console.log('Migration check failed:', err.message);
+}
 
 module.exports = db;
