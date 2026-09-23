@@ -2,116 +2,117 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Ren</title>
 <style>
   :root {
-    --bg: #08090b; --surface: #131418; --surface-hover: #1a1c22;
-    --border: #23252d; --text: #eaeaee; --text-dim: #8b8d98; --text-faint: #55575f;
-    --accent: #7c9eff; --accent-dim: #2a3550;
-    --green: #4ade80; --green-dim: #133d24;
-    --red: #f87171; --red-dim: #3d1717;
-    --amber: #fbbf24; --amber-dim: rgba(251,191,36,0.12);
-    --purple: #c084fc; --purple-dim: rgba(192,132,252,0.12);
-    --radius: 14px;
+    --bg: #0b0c10; --surface: #15171d; --surface-2: #1c1f27; --surface-hover: #222530;
+    --border: #262a35; --text: #f2f3f5; --text-dim: #9298a6; --text-faint: #565c6b;
+    --accent: #6ea8fe; --accent-dim: #1c2c4a; --accent-glow: rgba(110,168,254,0.15);
+    --green: #3ddc84; --green-dim: #123324;
+    --red: #ff6b6b; --red-dim: #3a1818;
+    --amber: #ffc857; --amber-dim: rgba(255,200,87,0.12);
+    --purple: #b98cf0; --purple-dim: rgba(185,140,240,0.12);
+    --radius: 16px; --radius-sm: 10px;
+    --navh: 64px;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg); color: var(--text); padding: 0 0 40px 0;
+    background: var(--bg); color: var(--text);
+    padding-bottom: calc(var(--navh) + env(safe-area-inset-bottom, 0px) + 12px);
+    padding-top: env(safe-area-inset-top, 0px);
     -webkit-font-smoothing: antialiased;
   }
-  .header {
-    padding: 24px 18px 16px; position: sticky; top: 0;
-    background: linear-gradient(180deg, var(--bg) 80%, transparent); z-index: 10;
-  }
-  .brand { display: flex; align-items: center; gap: 10px; }
-  .brand-dot {
-    width: 10px; height: 10px; border-radius: 50%; background: var(--green);
-    box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite;
-  }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-  h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.3px; }
-  .tagline { color: var(--text-faint); font-size: 12px; margin-top: 2px; }
 
-  .mode-tabs {
-    display: flex; gap: 6px; margin: 18px 18px 4px;
+  .header { padding: 20px 18px 4px; }
+  .brand { display: flex; align-items: center; gap: 9px; }
+  .brand-dot {
+    width: 9px; height: 9px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 10px var(--green); animation: pulse 2.2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; }
+  .tagline { color: var(--text-faint); font-size: 12.5px; margin-top: 3px; }
+
+  .mode-switch {
+    display: flex; gap: 4px; margin: 16px 18px 0;
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 12px; padding: 4px;
   }
-  .mode-tab {
-    flex: 1; text-align: center; padding: 10px 6px; border-radius: 9px;
-    font-size: 13px; font-weight: 600; color: var(--text-dim);
-    cursor: pointer; transition: all 0.15s ease; border: none; background: none;
+  .mode-btn {
+    flex: 1; text-align: center; padding: 9px 6px; border-radius: 9px;
+    font-size: 13px; font-weight: 700; color: var(--text-dim);
+    border: none; background: none; cursor: pointer; transition: all .15s;
   }
-  .mode-tab.active { background: var(--accent-dim); color: var(--accent); }
-  .mode-tab .tab-sub { display: block; font-size: 10px; font-weight: 400; opacity: 0.7; margin-top: 1px; }
+  .mode-btn.active { background: var(--accent-dim); color: var(--accent); box-shadow: 0 0 0 1px var(--accent-glow); }
+  .mode-btn .sub { display: block; font-size: 10px; font-weight: 500; opacity: .65; margin-top: 1px; }
 
-  .sub-tabs { display: flex; gap: 6px; margin: 12px 18px 0; overflow-x: auto; }
-  .sub-tab {
-    white-space: nowrap; padding: 8px 14px; border-radius: 20px;
-    font-size: 12px; font-weight: 600; color: var(--text-dim);
-    background: var(--surface); border: 1px solid var(--border); cursor: pointer;
-  }
-  .sub-tab.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-dim); }
+  .content { padding: 18px; }
+  .page { display: none; }
+  .page.active { display: block; }
 
-  .content { padding: 0 18px; }
-  .section { margin-top: 22px; }
+  .section { margin-bottom: 22px; }
   .section-title {
-    font-size: 12px; text-transform: uppercase; color: var(--text-faint);
-    letter-spacing: 0.8px; margin-bottom: 10px; font-weight: 600;
+    font-size: 11.5px; text-transform: uppercase; color: var(--text-faint);
+    letter-spacing: 0.9px; margin-bottom: 10px; font-weight: 700;
     display: flex; justify-content: space-between; align-items: center;
   }
-  .section-count {
-    font-size: 10px; background: var(--surface-hover); color: var(--text-dim);
-    padding: 2px 8px; border-radius: 10px; font-weight: 700;
+  .count-pill {
+    font-size: 10px; background: var(--surface-2); color: var(--text-dim);
+    padding: 2px 9px; border-radius: 10px; font-weight: 800;
   }
 
   .card {
-    background: var(--surface); border: 1px solid var(--border);
+    background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+    border: 1px solid var(--border);
     border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
   }
   .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-  .asset-name { font-weight: 600; font-size: 15px; }
-  .direction { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 700; letter-spacing: 0.3px; }
+  .asset-name { font-weight: 700; font-size: 15px; }
+  .direction { font-size: 10.5px; padding: 3px 10px; border-radius: 20px; font-weight: 800; letter-spacing: 0.4px; }
   .buy { background: var(--green-dim); color: var(--green); }
   .sell { background: var(--red-dim); color: var(--red); }
 
   .detail-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-dim); margin: 5px 0; gap: 12px; }
-  .detail-row span:last-child { color: var(--text); text-align: right; font-weight: 500; }
+  .detail-row span:last-child { color: var(--text); text-align: right; font-weight: 600; }
 
   .reasoning-text {
-    font-size: 13px; color: var(--text-dim); line-height: 1.5;
+    font-size: 13px; color: var(--text-dim); line-height: 1.55;
     margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
   }
 
   .buttons { display: flex; gap: 8px; margin-top: 12px; }
   button {
-    border: none; border-radius: 10px; font-size: 13px; font-weight: 600;
+    border: none; border-radius: var(--radius-sm); font-size: 13.5px; font-weight: 700;
     cursor: pointer; padding: 11px; color: var(--text);
-    background: var(--surface-hover); transition: opacity 0.15s;
+    background: var(--surface-hover); transition: opacity .15s, transform .1s;
   }
-  button:active { opacity: 0.7; }
+  button:active { opacity: 0.75; transform: scale(0.98); }
   button:disabled { opacity: 0.4; }
-  .approve-btn { flex: 1; background: var(--green-dim); color: var(--green); }
-  .reject-btn { flex: 1; background: var(--red-dim); color: var(--red); }
+  .approve-btn { flex: 1; background: linear-gradient(180deg, #2ecc76, #24a862); color: #04170c; }
+  .reject-btn { flex: 1; background: var(--surface-hover); color: var(--red); border: 1px solid var(--red-dim); }
   .analyze-btn { padding: 7px 14px; font-size: 12px; background: var(--accent-dim); color: var(--accent); }
-  .scan-btn { width: 100%; background: var(--accent-dim); color: var(--accent); padding: 13px; font-size: 14px; }
+  .scan-btn {
+    width: 100%; background: linear-gradient(180deg, #7fb2ff, #5f95f0); color: #071224;
+    padding: 14px; font-size: 14.5px; font-weight: 800;
+  }
 
-  .empty { color: var(--text-faint); font-size: 13px; text-align: center; padding: 28px 20px; }
+  .empty { color: var(--text-faint); font-size: 13px; text-align: center; padding: 30px 20px; }
 
   .stat-row { display: flex; gap: 10px; }
   .stat-card {
     flex: 1; background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 16px 12px; text-align: center;
   }
-  .stat-value { font-size: 22px; font-weight: 700; color: var(--accent); }
-  .stat-label { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+  .stat-value { font-size: 23px; font-weight: 800; color: var(--accent); }
+  .stat-label { font-size: 10.5px; color: var(--text-faint); margin-top: 4px; }
 
   .status-badge {
-    font-size: 10px; padding: 3px 8px; border-radius: 20px;
+    font-size: 10px; padding: 3px 9px; border-radius: 20px;
     background: var(--surface-hover); color: var(--text-dim);
-    font-weight: 600; text-transform: uppercase;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
   }
   .status-badge.approved, .status-badge.open { background: var(--green-dim); color: var(--green); }
   .status-badge.hit_tp { background: var(--green-dim); color: var(--green); }
@@ -119,18 +120,18 @@
   .status-badge.pending_approval { background: var(--amber-dim); color: var(--amber); }
 
   .crt-badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 11px; padding: 4px 10px; border-radius: 20px;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; padding: 5px 11px; border-radius: 20px;
     background: var(--purple-dim); color: var(--purple);
-    font-weight: 600; margin-top: 8px;
+    font-weight: 700; margin-top: 8px;
   }
-  .crt-badge.mss-confirmed { background: rgba(74,222,128,0.12); color: var(--green); }
+  .crt-badge.mss-confirmed { background: var(--green-dim); color: var(--green); }
   .crt-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
-  .coming-soon { text-align: center; padding: 60px 24px; }
-  .coming-soon-icon { font-size: 40px; margin-bottom: 14px; opacity: 0.5; }
-  .coming-soon-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
-  .coming-soon-text { font-size: 13px; color: var(--text-faint); line-height: 1.5; max-width: 280px; margin: 0 auto; }
+  .coming-soon { text-align: center; padding: 70px 24px; }
+  .coming-soon-icon { font-size: 42px; margin-bottom: 14px; opacity: 0.55; }
+  .coming-soon-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .coming-soon-text { font-size: 13px; color: var(--text-faint); line-height: 1.55; max-width: 280px; margin: 0 auto; }
 
   .loading-spin {
     display: inline-block; width: 14px; height: 14px;
@@ -138,6 +139,31 @@
     border-radius: 50%; animation: spin 0.6s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Bottom nav bar */
+  .bottom-nav {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    height: calc(var(--navh) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(21,23,29,0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid var(--border);
+    display: flex; z-index: 50;
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; background: none; border: none; color: var(--text-faint);
+    font-size: 10.5px; font-weight: 700; cursor: pointer; position: relative;
+  }
+  .nav-item .icon { font-size: 19px; line-height: 1; }
+  .nav-item.active { color: var(--accent); }
+  .nav-badge {
+    position: absolute; top: 2px; right: calc(50% - 20px);
+    background: var(--red); color: #fff; font-size: 9px; font-weight: 800;
+    min-width: 15px; height: 15px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; padding: 0 3px;
+  }
 </style>
 </head>
 <body>
@@ -150,68 +176,57 @@
   <div class="tagline" id="mode-tagline">Loading...</div>
 </div>
 
-<div class="mode-tabs">
-  <button class="mode-tab" id="tab-pulse" onclick="switchMode('pulse')">Pulse<span class="tab-sub">Markets</span></button>
-  <button class="mode-tab" id="tab-focus" onclick="switchMode('focus')">Focus<span class="tab-sub">Study</span></button>
-  <button class="mode-tab" id="tab-grind" onclick="switchMode('grind')">Grind<span class="tab-sub">Freelance</span></button>
+<div class="mode-switch">
+  <button class="mode-btn" id="mode-pulse" onclick="switchMode('pulse')">Pulse<span class="sub">Markets</span></button>
+  <button class="mode-btn" id="mode-focus" onclick="switchMode('focus')">Focus<span class="sub">Study</span></button>
+  <button class="mode-btn" id="mode-grind" onclick="switchMode('grind')">Grind<span class="sub">Freelance</span></button>
 </div>
 
 <div class="content">
 
-  <div id="pulse-view">
+  <div id="pulse-pages">
 
-    <div class="sub-tabs">
-      <div class="sub-tab active" data-tab="overview" onclick="switchTab('overview')">Overview</div>
-      <div class="sub-tab" data-tab="pending" onclick="switchTab('pending')">Pending</div>
-      <div class="sub-tab" data-tab="approved" onclick="switchTab('approved')">Approved</div>
-      <div class="sub-tab" data-tab="history" onclick="switchTab('history')">History</div>
-      <div class="sub-tab" data-tab="watchlist" onclick="switchTab('watchlist')">Watchlist</div>
-    </div>
-
-    <div id="tab-overview" class="tab-panel">
+    <div id="page-overview" class="page active">
       <div class="section">
         <div class="section-title">Performance</div>
         <div class="stat-row" id="stats-container"></div>
       </div>
-
       <div class="section">
-        <div class="section-title">Pending Approval <span class="section-count" id="count-pending">0</span></div>
+        <div class="section-title">Pending Approval <span class="count-pill" id="count-pending-ov">0</span></div>
         <div id="pending-preview"><div class="empty"><span class="loading-spin"></span></div></div>
       </div>
-
       <div class="section">
-        <div class="section-title">Live / Approved Trades <span class="section-count" id="count-approved">0</span></div>
+        <div class="section-title">Live Trades <span class="count-pill" id="count-approved-ov">0</span></div>
         <div id="approved-preview"><div class="empty"><span class="loading-spin"></span></div></div>
       </div>
-
       <div class="section">
-        <div class="section-title">CRT / Turtle Soup Setups</div>
+        <div class="section-title">CRT / Turtle Soup</div>
         <div id="crt-container"><div class="empty">Analyze an asset to check for CRT setups.</div></div>
       </div>
     </div>
 
-    <div id="tab-pending" class="tab-panel" style="display:none;">
+    <div id="page-pending" class="page">
       <div class="section">
-        <div class="section-title">Pending Approval <span class="section-count" id="count-pending-full">0</span></div>
+        <div class="section-title">Pending Approval <span class="count-pill" id="count-pending-full">0</span></div>
         <div id="pending-container"><div class="empty"><span class="loading-spin"></span></div></div>
       </div>
     </div>
 
-    <div id="tab-approved" class="tab-panel" style="display:none;">
+    <div id="page-approved" class="page">
       <div class="section">
-        <div class="section-title">Approved Trades — Entry / SL / TP / Ratio <span class="section-count" id="count-approved-full">0</span></div>
+        <div class="section-title">Approved — Entry / SL / TP / Ratio <span class="count-pill" id="count-approved-full">0</span></div>
         <div id="approved-container"><div class="empty"><span class="loading-spin"></span></div></div>
       </div>
     </div>
 
-    <div id="tab-history" class="tab-panel" style="display:none;">
+    <div id="page-history" class="page">
       <div class="section">
-        <div class="section-title">Trade History <span class="section-count" id="count-history">0</span></div>
+        <div class="section-title">Trade History <span class="count-pill" id="count-history">0</span></div>
         <div id="history-container"><div class="empty"><span class="loading-spin"></span></div></div>
       </div>
     </div>
 
-    <div id="tab-watchlist" class="tab-panel" style="display:none;">
+    <div id="page-watchlist" class="page">
       <div class="section">
         <button class="scan-btn" onclick="scanNow()">Scan Full Watchlist</button>
         <div id="watchlist-container" style="margin-top:14px;"></div>
@@ -238,9 +253,28 @@
 
 </div>
 
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="nav-item active" data-page="overview" onclick="goToPage('overview')">
+    <span class="icon">◎</span>Overview
+  </button>
+  <button class="nav-item" data-page="pending" onclick="goToPage('pending')">
+    <span class="icon">⏳</span>Pending
+    <span class="nav-badge" id="badge-pending" style="display:none;">0</span>
+  </button>
+  <button class="nav-item" data-page="approved" onclick="goToPage('approved')">
+    <span class="icon">✓</span>Approved
+  </button>
+  <button class="nav-item" data-page="history" onclick="goToPage('history')">
+    <span class="icon">↺</span>History
+  </button>
+  <button class="nav-item" data-page="watchlist" onclick="goToPage('watchlist')">
+    <span class="icon">☰</span>Watch
+  </button>
+</nav>
+
 <script>
 let currentMode = 'pulse';
-let currentTab = 'overview';
+let currentPage = 'overview';
 let allTrades = [];
 const crtResults = {};
 
@@ -266,19 +300,23 @@ async function switchMode(name) {
 function renderModeUI() {
   document.getElementById('mode-tagline').textContent = MODE_TAGLINES[currentMode] || '';
   ['pulse', 'focus', 'grind'].forEach(m => {
-    document.getElementById(`tab-${m}`).classList.toggle('active', m === currentMode);
-    document.getElementById(`${m}-view`).style.display = m === currentMode ? 'block' : 'none';
+    document.getElementById(`mode-${m}`).classList.toggle('active', m === currentMode);
   });
+  document.getElementById('pulse-pages').style.display = currentMode === 'pulse' ? 'block' : 'none';
+  document.getElementById('focus-view').style.display = currentMode === 'focus' ? 'block' : 'none';
+  document.getElementById('grind-view').style.display = currentMode === 'grind' ? 'block' : 'none';
+  document.getElementById('bottom-nav').style.display = currentMode === 'pulse' ? 'flex' : 'none';
+
   if (currentMode === 'pulse') refreshAllPulseData();
 }
 
-function switchTab(tab) {
-  currentTab = tab;
-  document.querySelectorAll('.sub-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-  document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
-  document.getElementById(`tab-${tab}`).style.display = 'block';
-
-  if (tab === 'watchlist') loadWatchlist();
+function goToPage(page) {
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
+  window.scrollTo(0, 0);
+  if (page === 'watchlist') loadWatchlist();
 }
 
 async function loadStats() {
@@ -287,7 +325,7 @@ async function loadStats() {
   document.getElementById('stats-container').innerHTML = ['1:2', '1:3'].map(ratio => `
     <div class="stat-card">
       <div class="stat-value">${stats[ratio].winRate}</div>
-      <div class="stat-label">${ratio} ratio · ${stats[ratio].total} trades</div>
+      <div class="stat-label">${ratio} · ${stats[ratio].total} trades</div>
     </div>
   `).join('');
 }
@@ -323,12 +361,17 @@ function tradeRowHtml(t, showActions) {
 
 function renderPending() {
   const pending = allTrades.filter(t => t.status === 'pending_approval');
-  document.getElementById('count-pending').textContent = pending.length;
+
+  document.getElementById('count-pending-ov').textContent = pending.length;
   document.getElementById('count-pending-full').textContent = pending.length;
+
+  const badge = document.getElementById('badge-pending');
+  if (pending.length > 0) { badge.style.display = 'flex'; badge.textContent = pending.length; }
+  else { badge.style.display = 'none'; }
 
   const previewHtml = pending.length
     ? pending.slice(0, 2).map(t => tradeRowHtml(t, true)).join('') +
-      (pending.length > 2 ? `<button onclick="switchTab('pending')" style="width:100%;background:var(--surface-hover);">View all ${pending.length}</button>` : '')
+      (pending.length > 2 ? `<button onclick="goToPage('pending')" style="width:100%;background:var(--surface-hover);">View all ${pending.length}</button>` : '')
     : '<div class="empty">No trades pending approval.</div>';
 
   document.getElementById('pending-preview').innerHTML = previewHtml;
@@ -339,24 +382,23 @@ function renderPending() {
 
 function renderApproved() {
   const approved = allTrades.filter(t => t.status === 'open' || t.status === 'approved');
-  document.getElementById('count-approved').textContent = approved.length;
+  document.getElementById('count-approved-ov').textContent = approved.length;
   document.getElementById('count-approved-full').textContent = approved.length;
 
   const previewHtml = approved.length
     ? approved.slice(0, 2).map(t => tradeRowHtml(t, false)).join('') +
-      (approved.length > 2 ? `<button onclick="switchTab('approved')" style="width:100%;background:var(--surface-hover);">View all ${approved.length}</button>` : '')
-    : '<div class="empty">No approved trades currently being tracked.</div>';
+      (approved.length > 2 ? `<button onclick="goToPage('approved')" style="width:100%;background:var(--surface-hover);">View all ${approved.length}</button>` : '')
+    : '<div class="empty">No live trades currently.</div>';
 
   document.getElementById('approved-preview').innerHTML = previewHtml;
   document.getElementById('approved-container').innerHTML = approved.length
     ? approved.map(t => tradeRowHtml(t, false)).join('')
-    : '<div class="empty">No approved trades currently being tracked.</div>';
+    : '<div class="empty">No live trades currently.</div>';
 }
 
 function renderHistory() {
   const history = allTrades.filter(t => ['hit_tp', 'hit_sl', 'rejected'].includes(t.status));
   document.getElementById('count-history').textContent = history.length;
-
   document.getElementById('history-container').innerHTML = history.length
     ? history.map(t => tradeRowHtml(t, false)).join('')
     : '<div class="empty">No closed or rejected trades yet.</div>';
@@ -365,8 +407,7 @@ function renderHistory() {
 async function loadWatchlist() {
   const res = await fetch('/api/watchlist');
   const list = await res.json();
-  const container = document.getElementById('watchlist-container');
-  container.innerHTML = list.map(a => `
+  document.getElementById('watchlist-container').innerHTML = list.map(a => `
     <div class="card">
       <div class="card-header">
         <span class="asset-name">${a.name}</span>
@@ -380,12 +421,10 @@ async function loadWatchlist() {
 function renderCRTSection() {
   const container = document.getElementById('crt-container');
   const entries = Object.entries(crtResults).filter(([_, c]) => c && c.hasSetup);
-
   if (entries.length === 0) {
-    container.innerHTML = '<div class="empty">No CRT / Turtle Soup setups detected yet. Analyze assets to check.</div>';
+    container.innerHTML = '<div class="empty">No CRT / Turtle Soup setups detected yet.</div>';
     return;
   }
-
   container.innerHTML = entries.map(([name, c]) => `
     <div class="card">
       <div class="card-header">
@@ -395,8 +434,7 @@ function renderCRTSection() {
       <div class="detail-row"><span>Daily Range</span><span>${c.dailyRange.low.toFixed(5)} - ${c.dailyRange.high.toFixed(5)}</span></div>
       <div class="detail-row"><span>Sweep</span><span>${c.sweep.type} @ ${c.sweep.wickPrice.toFixed(5)}</span></div>
       <div class="crt-badge ${c.mssConfirmed ? 'mss-confirmed' : ''}">
-        <span class="crt-dot"></span>
-        MSS ${c.mssConfirmed ? 'Confirmed' : 'Not Yet Confirmed'}
+        <span class="crt-dot"></span>MSS ${c.mssConfirmed ? 'Confirmed' : 'Not Yet Confirmed'}
       </div>
       <div class="detail-row" style="margin-top:8px;"><span>Entry</span><span>${c.entry.toFixed ? c.entry.toFixed(5) : c.entry}</span></div>
       <div class="detail-row"><span>SL / Target</span><span>${c.stopLoss.toFixed(5)} / ${c.takeProfit.toFixed(5)}</span></div>
@@ -430,7 +468,6 @@ async function analyzeAsset(symbol, name, btn) {
       `;
       crtResults[name] = result.crt || null;
     }
-
     renderCRTSection();
     await refreshAllPulseData();
   } catch (err) {
@@ -443,10 +480,8 @@ async function analyzeAsset(symbol, name, btn) {
 async function approveTrade(id) {
   const trade = allTrades.find(t => t.id === id);
   if (!trade) { alert('Trade not found'); return; }
-
   const res = await fetch('/api/trades/approve', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: trade.name, mode: currentMode })
   });
   const data = await res.json();
@@ -457,10 +492,8 @@ async function approveTrade(id) {
 async function rejectTrade(id) {
   const trade = allTrades.find(t => t.id === id);
   if (!trade) { alert('Trade not found'); return; }
-
   const res = await fetch('/api/trades/reject', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: trade.name, mode: currentMode })
   });
   const data = await res.json();
@@ -473,7 +506,7 @@ async function scanNow() {
   btn.innerHTML = '<span class="loading-spin"></span> Scanning...';
   await fetch('/api/scan', { method: 'POST' });
   setTimeout(() => { btn.textContent = 'Scan Full Watchlist'; }, 2000);
-  alert('Scan started in the background — takes a few minutes. Refresh tabs shortly to see results.');
+  alert('Scan started in the background — takes a few minutes.');
 }
 
 async function refreshAllPulseData() {
