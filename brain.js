@@ -278,22 +278,22 @@ CONFIDENCE: [high/medium/low]
     ...parsed,
   };
 }
-
 function parseTradeBlock(raw, zone) {
+  // Only trust the LLM for RATIO and CONFIDENCE — these are judgment calls.
+  // Entry/StopLoss/TakeProfit are ALWAYS taken from our own calculated zone
+  // data, never from what the LLM writes, so the ratio math is guaranteed
+  // to be exact (no LLM transcription drift).
   const ratioMatch = raw.match(/RATIO:\s*(1:[23])/i);
-  const entryMatch = raw.match(/ENTRY:\s*([\d.]+)/i);
-  const slMatch = raw.match(/STOP_LOSS:\s*([\d.]+)/i);
-  const tpMatch = raw.match(/TAKE_PROFIT:\s*([\d.]+)/i);
   const confMatch = raw.match(/CONFIDENCE:\s*(high|medium|low)/i);
 
   const ratio = ratioMatch ? ratioMatch[1] : '1:2';
-  const fallbackTarget = ratio === '1:3' ? zone.target3R : zone.target2R;
+  const takeProfit = ratio === '1:3' ? zone.target3R : zone.target2R;
 
   return {
     ratio,
-    entry: entryMatch ? parseFloat(entryMatch[1]) : zone.entry,
-    stopLoss: slMatch ? parseFloat(slMatch[1]) : zone.stopLoss,
-    takeProfit: tpMatch ? parseFloat(tpMatch[1]) : fallbackTarget,
+    entry: zone.entry,
+    stopLoss: zone.stopLoss,
+    takeProfit,
     confidence: confMatch ? confMatch[1].toLowerCase() : 'unknown',
   };
 }
