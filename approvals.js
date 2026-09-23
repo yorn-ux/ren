@@ -17,7 +17,8 @@ function approveTrade(id) {
 function rejectTrade(id) {
   const trade = db.prepare("SELECT * FROM trades WHERE id = ? AND status = 'pending_approval'").get(id);
   if (!trade) return { success: false, message: `No pending trade found with id ${id}` };
-  db.prepare("UPDATE trades SET status = 'rejected' WHERE id = ?").run(id);
+  // Set closed_at so the cleanup job knows when the 24h retention clock started
+  db.prepare("UPDATE trades SET status = 'rejected', closed_at = CURRENT_TIMESTAMP WHERE id = ?").run(id);
   return { success: true, trade };
 }
 

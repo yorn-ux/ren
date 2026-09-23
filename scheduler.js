@@ -1,6 +1,7 @@
 const { getTradeRecommendation } = require('./brain');
 const { checkOpenTrades } = require('./outcomes');
 const { checkEntryAlerts } = require('./entryAlerts');
+const { cleanupRejectedTrades, cleanupStalePendingTrades } = require('./cleanup');
 const { notify } = require('./notify');
 const watchlist = require('./watchlist');
 
@@ -38,6 +39,24 @@ async function runScan() {
       console.log('Entry alert check failed:', err.message);
     }
 
+    try {
+      const rejectedDeleted = cleanupRejectedTrades();
+      if (rejectedDeleted > 0) {
+        console.log(`Cleaned up ${rejectedDeleted} rejected trade(s) past 24h retention.`);
+      }
+    } catch (err) {
+      console.log('Rejected-trade cleanup failed:', err.message);
+    }
+
+    try {
+      const staleResult = await cleanupStalePendingTrades();
+      if (staleResult.deletedCount > 0) {
+        console.log(`Removed ${staleResult.deletedCount} stale pending trade(s): ${staleResult.deletedNames.join(', ')}`);
+      }
+    } catch (err) {
+      console.log('Stale-pending cleanup failed:', err.message);
+    }
+
     const actionable = [];
 
     for (const asset of watchlist) {
@@ -71,7 +90,7 @@ async function runScan() {
 function startScheduler() {
   runScan();
   setInterval(runScan, 60 * 60 * 1000);
-  console.log('Scheduler running. Ren will scan every hour: checking outcomes, entry alerts, then scouting new setups.');
+  console.log('Scheduler running. Ren will scan every hour: outcomes, entry alerts, cleanup, then new setups.');
 }
 
 module.exports = { runScan, startScheduler };
