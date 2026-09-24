@@ -1,15 +1,14 @@
 require('dotenv').config();
 
-const MARKETAUX_SEARCH_MAP = {
-  'BTC/USD': 'bitcoin', 'ETH/USD': 'ethereum', 'SOL/USD': 'solana', 'XRP/USD': 'xrp',
-  'NEAR/USD': 'near protocol', 'ZEC/USD': 'zcash',
-  'XAU/USD': 'gold price', 'EUR/USD': 'euro dollar', 'GBP/USD': 'pound dollar',
-  'USD/JPY': 'yen dollar', 'AUD/USD': 'australian dollar', 'USD/CAD': 'canadian dollar',
+const ALPHA_TICKER_MAP = {
+  'BTC/USD': 'CRYPTO:BTC', 'ETH/USD': 'CRYPTO:ETH', 'SOL/USD': 'CRYPTO:SOL', 'XRP/USD': 'CRYPTO:XRP',
+  'NEAR/USD': 'CRYPTO:NEAR', 'ZEC/USD': 'CRYPTO:ZEC',
+  'XAU/USD': 'FOREX:XAU', 'EUR/USD': 'FOREX:EUR', 'GBP/USD': 'FOREX:GBP',
+  'USD/JPY': 'FOREX:JPY', 'AUD/USD': 'FOREX:AUD', 'USD/CAD': 'FOREX:CAD',
 };
 
 // Marketaux uses plain search terms rather than ticker codes
 const MARKETAUX_SEARCH_MAP = {
-  const MARKETAUX_SEARCH_MAP = {
   'BTC/USD': 'bitcoin', 'ETH/USD': 'ethereum', 'SOL/USD': 'solana', 'XRP/USD': 'xrp',
   'NEAR/USD': 'near protocol', 'ZEC/USD': 'zcash',
   'XAU/USD': 'gold price', 'EUR/USD': 'euro dollar', 'GBP/USD': 'pound dollar',
