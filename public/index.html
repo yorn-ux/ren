@@ -2,117 +2,123 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ren</title>
 <style>
   :root {
-    --bg: #0b0c10; --surface: #15171d; --surface-2: #1c1f27; --surface-hover: #222530;
-    --border: #262a35; --text: #f2f3f5; --text-dim: #9298a6; --text-faint: #565c6b;
-    --accent: #6ea8fe; --accent-dim: #1c2c4a; --accent-glow: rgba(110,168,254,0.15);
-    --green: #3ddc84; --green-dim: #123324;
-    --red: #ff6b6b; --red-dim: #3a1818;
-    --amber: #ffc857; --amber-dim: rgba(255,200,87,0.12);
-    --purple: #b98cf0; --purple-dim: rgba(185,140,240,0.12);
-    --radius: 16px; --radius-sm: 10px;
-    --navh: 64px;
+    --bg: #101211; --surface: #1a1c1a; --surface-2: #212420; --surface-hover: #282b27;
+    --border: #2e322d; --text: #eae7de; --text-dim: #--text-dim: #9c988a; --text-faint: #6b6f66;
+    --accent: #e8a13c; --accent-dim: #3a2c14; --accent-soft: #f0b862;
+    --teal: #4fb8a6; --teal-dim: #16332e;
+    --green: #7bc47f; --green-dim: #1c2e1c;
+    --red: #d9705f; --red-dim: #33201c;
+    --amber: #e8a13c; --amber-dim: rgba(232,161,60,0.12);
+    --radius: 12px; --radius-sm: 8px;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     background: var(--bg); color: var(--text);
-    padding-bottom: calc(var(--navh) + env(safe-area-inset-bottom, 0px) + 12px);
-    padding-top: env(safe-area-inset-top, 0px);
     -webkit-font-smoothing: antialiased;
   }
 
-  .header { padding: 20px 18px 4px; }
+  .topnav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 22px; border-bottom: 1px solid var(--border);
+    background: var(--surface); position: sticky; top: 0; z-index: 20;
+    flex-wrap: wrap; gap: 12px;
+  }
   .brand { display: flex; align-items: center; gap: 9px; }
   .brand-dot {
-    width: 9px; height: 9px; border-radius: 50%; background: var(--green);
-    box-shadow: 0 0 10px var(--green); animation: pulse 2.2s infinite;
+    width: 9px; height: 9px; border-radius: 50%; background: var(--teal);
+    box-shadow: 0 0 8px var(--teal); animation: pulse 2.2s infinite;
   }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
-  h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; }
-  .tagline { color: var(--text-faint); font-size: 12.5px; margin-top: 3px; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .brand h1 { font-size: 19px; font-weight: 600; letter-spacing: -0.2px; }
+  .brand .tagline { color: var(--text-faint); font-size: 12px; margin-left: 8px; }
 
-  .mode-switch {
-    display: flex; gap: 4px; margin: 16px 18px 0;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 4px;
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tab {
+    padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+    color: var(--text-dim); border: none; background: none; cursor: pointer;
+    position: relative;
   }
+  .nav-tab:hover { color: var(--text); background: var(--surface-hover); }
+  .nav-tab.active { color: var(--accent); background: var(--accent-dim); }
+  .nav-tab .badge {
+    position: absolute; top: 2px; right: 4px; background: var(--red); color: #fff;
+    font-size: 9px; font-weight: 700; min-width: 15px; height: 15px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; padding: 0 3px;
+  }
+
+  .mode-switch { display: flex; gap: 4px; background: var(--surface-2); border-radius: 8px; padding: 3px; }
   .mode-btn {
-    flex: 1; text-align: center; padding: 9px 6px; border-radius: 9px;
-    font-size: 13px; font-weight: 700; color: var(--text-dim);
-    border: none; background: none; cursor: pointer; transition: all .15s;
+    padding: 6px 13px; border-radius: 6px; font-size: 12.5px; font-weight: 500;
+    color: var(--text-dim); border: none; background: none; cursor: pointer;
   }
-  .mode-btn.active { background: var(--accent-dim); color: var(--accent); box-shadow: 0 0 0 1px var(--accent-glow); }
-  .mode-btn .sub { display: block; font-size: 10px; font-weight: 500; opacity: .65; margin-top: 1px; }
+  .mode-btn.active { background: var(--teal-dim); color: var(--teal); }
 
-  .content { padding: 18px; }
+  .content { max-width: 720px; margin: 0 auto; padding: 22px 18px 60px; }
   .page { display: none; }
   .page.active { display: block; }
 
-  .section { margin-bottom: 22px; }
+  .section { margin-bottom: 24px; }
   .section-title {
-    font-size: 11.5px; text-transform: uppercase; color: var(--text-faint);
-    letter-spacing: 0.9px; margin-bottom: 10px; font-weight: 700;
+    font-size: 12px; text-transform: uppercase; color: var(--text-faint);
+    letter-spacing: 0.6px; margin-bottom: 10px; font-weight: 600;
     display: flex; justify-content: space-between; align-items: center;
   }
   .count-pill {
     font-size: 10px; background: var(--surface-2); color: var(--text-dim);
-    padding: 2px 9px; border-radius: 10px; font-weight: 800;
+    padding: 2px 8px; border-radius: 10px; font-weight: 700;
   }
 
   .card {
-    background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
-    border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 15px; margin-bottom: 9px;
   }
-  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-  .asset-name { font-weight: 700; font-size: 15px; }
-  .direction { font-size: 10.5px; padding: 3px 10px; border-radius: 20px; font-weight: 800; letter-spacing: 0.4px; }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
+  .asset-name { font-weight: 600; font-size: 14.5px; }
+  .direction { font-size: 10.5px; padding: 3px 9px; border-radius: 6px; font-weight: 700; letter-spacing: 0.2px; }
   .buy { background: var(--green-dim); color: var(--green); }
   .sell { background: var(--red-dim); color: var(--red); }
 
-  .detail-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-dim); margin: 5px 0; gap: 12px; }
-  .detail-row span:last-child { color: var(--text); text-align: right; font-weight: 600; }
+  .detail-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-dim); margin: 4px 0; gap: 12px; }
+  .detail-row span:last-child { color: var(--text); text-align: right; font-weight: 500; }
 
   .reasoning-text {
     font-size: 13px; color: var(--text-dim); line-height: 1.55;
     margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
   }
 
-  .buttons { display: flex; gap: 8px; margin-top: 12px; }
+  .buttons { display: flex; gap: 8px; margin-top: 11px; }
   button {
-    border: none; border-radius: var(--radius-sm); font-size: 13.5px; font-weight: 700;
-    cursor: pointer; padding: 11px; color: var(--text);
-    background: var(--surface-hover); transition: opacity .15s, transform .1s;
+    border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+    cursor: pointer; padding: 10px; color: var(--text);
+    background: var(--surface-hover); transition: opacity .15s;
+    font-family: inherit;
   }
-  button:active { opacity: 0.75; transform: scale(0.98); }
+  button:active { opacity: 0.75; }
   button:disabled { opacity: 0.4; }
-  .approve-btn { flex: 1; background: linear-gradient(180deg, #2ecc76, #24a862); color: #04170c; }
+  .approve-btn { flex: 1; background: var(--teal); color: #08221c; }
   .reject-btn { flex: 1; background: var(--surface-hover); color: var(--red); border: 1px solid var(--red-dim); }
-  .analyze-btn { padding: 7px 14px; font-size: 12px; background: var(--accent-dim); color: var(--accent); }
-  .scan-btn {
-    width: 100%; background: linear-gradient(180deg, #7fb2ff, #5f95f0); color: #071224;
-    padding: 14px; font-size: 14.5px; font-weight: 800;
-  }
+  .analyze-btn { padding: 6px 13px; font-size: 12px; background: var(--accent-dim); color: var(--accent-soft); }
+  .scan-btn { width: 100%; background: var(--accent); color: #241a06; padding: 13px; font-size: 14px; font-weight: 700; }
 
-  .empty { color: var(--text-faint); font-size: 13px; text-align: center; padding: 30px 20px; }
+  .empty { color: var(--text-faint); font-size: 13px; text-align: center; padding: 28px 20px; }
 
   .stat-row { display: flex; gap: 10px; }
   .stat-card {
     flex: 1; background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 16px 12px; text-align: center;
+    border-radius: var(--radius); padding: 15px 12px; text-align: center;
   }
-  .stat-value { font-size: 23px; font-weight: 800; color: var(--accent); }
+  .stat-value { font-size: 21px; font-weight: 700; color: var(--teal); }
   .stat-label { font-size: 10.5px; color: var(--text-faint); margin-top: 4px; }
 
   .status-badge {
-    font-size: 10px; padding: 3px 9px; border-radius: 20px;
+    font-size: 10px; padding: 3px 8px; border-radius: 6px;
     background: var(--surface-hover); color: var(--text-dim);
-    font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+    font-weight: 600; text-transform: uppercase;
   }
   .status-badge.approved, .status-badge.open { background: var(--green-dim); color: var(--green); }
   .status-badge.hit_tp { background: var(--green-dim); color: var(--green); }
@@ -121,17 +127,17 @@
 
   .crt-badge {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 11px; padding: 5px 11px; border-radius: 20px;
-    background: var(--purple-dim); color: var(--purple);
-    font-weight: 700; margin-top: 8px;
+    font-size: 11px; padding: 4px 10px; border-radius: 6px;
+    background: var(--teal-dim); color: var(--teal);
+    font-weight: 600; margin-top: 8px;
   }
   .crt-badge.mss-confirmed { background: var(--green-dim); color: var(--green); }
   .crt-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
-  .coming-soon { text-align: center; padding: 70px 24px; }
-  .coming-soon-icon { font-size: 42px; margin-bottom: 14px; opacity: 0.55; }
-  .coming-soon-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
-  .coming-soon-text { font-size: 13px; color: var(--text-faint); line-height: 1.55; max-width: 280px; margin: 0 auto; }
+  .coming-soon { text-align: center; padding: 60px 24px; }
+  .coming-soon-icon { font-size: 38px; margin-bottom: 14px; opacity: 0.5; }
+  .coming-soon-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .coming-soon-text { font-size: 13px; color: var(--text-faint); line-height: 1.5; max-width: 280px; margin: 0 auto; }
 
   .loading-spin {
     display: inline-block; width: 14px; height: 14px;
@@ -140,46 +146,38 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Bottom nav bar */
-  .bottom-nav {
-    position: fixed; left: 0; right: 0; bottom: 0;
-    height: calc(var(--navh) + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    background: rgba(21,23,29,0.92);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border-top: 1px solid var(--border);
-    display: flex; z-index: 50;
-  }
-  .nav-item {
-    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 3px; background: none; border: none; color: var(--text-faint);
-    font-size: 10.5px; font-weight: 700; cursor: pointer; position: relative;
-  }
-  .nav-item .icon { font-size: 19px; line-height: 1; }
-  .nav-item.active { color: var(--accent); }
-  .nav-badge {
-    position: absolute; top: 2px; right: calc(50% - 20px);
-    background: var(--red); color: #fff; font-size: 9px; font-weight: 800;
-    min-width: 15px; height: 15px; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center; padding: 0 3px;
+  @media (max-width: 640px) {
+    .topnav { padding: 12px 14px; }
+    .brand .tagline { display: none; }
+    .nav-tabs { order: 3; width: 100%; overflow-x: auto; }
+    .nav-tab { white-space: nowrap; }
   }
 </style>
 </head>
 <body>
 
-<div class="header">
+<div class="topnav">
   <div class="brand">
     <div class="brand-dot"></div>
     <h1>Ren</h1>
+    <span class="tagline" id="mode-tagline">Loading...</span>
   </div>
-  <div class="tagline" id="mode-tagline">Loading...</div>
-</div>
 
-<div class="mode-switch">
-  <button class="mode-btn" id="mode-pulse" onclick="switchMode('pulse')">Pulse<span class="sub">Markets</span></button>
-  <button class="mode-btn" id="mode-focus" onclick="switchMode('focus')">Focus<span class="sub">Study</span></button>
-  <button class="mode-btn" id="mode-grind" onclick="switchMode('grind')">Grind<span class="sub">Freelance</span></button>
+  <div class="nav-tabs" id="pulse-nav">
+    <button class="nav-tab active" data-page="overview" onclick="goToPage('overview')">Overview</button>
+    <button class="nav-tab" data-page="pending" onclick="goToPage('pending')">
+      Pending <span class="badge" id="badge-pending" style="display:none;">0</span>
+    </button>
+    <button class="nav-tab" data-page="approved" onclick="goToPage('approved')">Approved</button>
+    <button class="nav-tab" data-page="history" onclick="goToPage('history')">History</button>
+    <button class="nav-tab" data-page="watchlist" onclick="goToPage('watchlist')">Watchlist</button>
+  </div>
+
+  <div class="mode-switch">
+    <button class="mode-btn" id="mode-pulse" onclick="switchMode('pulse')">Pulse</button>
+    <button class="mode-btn" id="mode-focus" onclick="switchMode('focus')">Focus</button>
+    <button class="mode-btn" id="mode-grind" onclick="switchMode('grind')">Grind</button>
+  </div>
 </div>
 
 <div class="content">
@@ -253,28 +251,8 @@
 
 </div>
 
-<nav class="bottom-nav" id="bottom-nav">
-  <button class="nav-item active" data-page="overview" onclick="goToPage('overview')">
-    <span class="icon">◎</span>Overview
-  </button>
-  <button class="nav-item" data-page="pending" onclick="goToPage('pending')">
-    <span class="icon">⏳</span>Pending
-    <span class="nav-badge" id="badge-pending" style="display:none;">0</span>
-  </button>
-  <button class="nav-item" data-page="approved" onclick="goToPage('approved')">
-    <span class="icon">✓</span>Approved
-  </button>
-  <button class="nav-item" data-page="history" onclick="goToPage('history')">
-    <span class="icon">↺</span>History
-  </button>
-  <button class="nav-item" data-page="watchlist" onclick="goToPage('watchlist')">
-    <span class="icon">☰</span>Watch
-  </button>
-</nav>
-
 <script>
 let currentMode = 'pulse';
-let currentPage = 'overview';
 let allTrades = [];
 const crtResults = {};
 
@@ -303,19 +281,17 @@ function renderModeUI() {
     document.getElementById(`mode-${m}`).classList.toggle('active', m === currentMode);
   });
   document.getElementById('pulse-pages').style.display = currentMode === 'pulse' ? 'block' : 'none';
+  document.getElementById('pulse-nav').style.display = currentMode === 'pulse' ? 'flex' : 'none';
   document.getElementById('focus-view').style.display = currentMode === 'focus' ? 'block' : 'none';
   document.getElementById('grind-view').style.display = currentMode === 'grind' ? 'block' : 'none';
-  document.getElementById('bottom-nav').style.display = currentMode === 'pulse' ? 'flex' : 'none';
 
   if (currentMode === 'pulse') refreshAllPulseData();
 }
 
 function goToPage(page) {
-  currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(`page-${page}`).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
-  window.scrollTo(0, 0);
+  document.querySelectorAll('.nav-tab').forEach(n => n.classList.toggle('active', n.dataset.page === page));
   if (page === 'watchlist') loadWatchlist();
 }
 
