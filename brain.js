@@ -181,6 +181,10 @@ async function getTradeRecommendation(symbol, name = symbol, includeNews = false
     ? `You already have a ${existingSameDirection.status.replace('_', ' ')} ${existingSameDirection.direction} trade on this asset from ${existingSameDirection.createdAt}. Entry: ${existingSameDirection.entry}, Stop Loss: ${existingSameDirection.stopLoss}, Take Profit: ${existingSameDirection.takeProfit}, Ratio: ${existingSameDirection.ratio}. Current progress: ${existingSameDirection.progressPercent}% of the way from entry toward target (negative means it has moved toward the stop loss instead). NOTE: this new setup is the OPPOSITE direction, which is why it's being shown as a distinct signal rather than blocked as a duplicate.`
     : 'No existing active trade on this asset currently.';
 
+  const newsText = news.available
+    ? `Overall sentiment: ${news.label} (score ${news.averageScore}, based on ${news.articleCount} scored article(s) out of ${news.recentHeadlines.length} recent headlines, source: ${news.source}).${news.lowConfidence ? ' LOW CONFIDENCE — fewer than 3 scored articles, this sentiment reading is statistically thin and should NOT meaningfully influence the ratio decision.' : ''} Recent headlines: ${news.recentHeadlines.map(h => h.title).join(' | ')}`
+    : `Not available for this request (${news.message}). Reason from technicals only — do not guess at news you don't have.`;
+
   const dataContext = `Asset: ${name} (${symbol})
 
 EXISTING POSITION:
@@ -219,9 +223,7 @@ ${crt.hasSetup
     : 'No CRT/Turtle Soup setup currently detected.'}
 
 NEWS SENTIMENT:
-${news.available
-    ? `Overall sentiment: ${news.label} (score ${news.averageScore}, based on ${news.articleCount} recent articles). Recent headlines: ${news.recentHeadlines.map(h => h.title).join(' | ')}`
-    : `Not available for this request (${news.message}). Reason from technicals only — do not guess at news you don't have.`}`;
+${newsText}`;
 
   const systemPrompt = REN_PERSONA + `
 
@@ -237,7 +239,7 @@ Then consider ALL of these for the ratio decision:
 - If a recent liquidity sweep occurred in the SAME direction as this trade, this strengthens confidence toward 1:3. If it contradicts the trade direction, favor 1:2.
 - If historical data shows 5+ closed trades for a ratio, weigh that real track record in. A ratio with a low win rate should require stronger confluence to justify reuse. If fewer than 5 closed trades exist, say so explicitly and rely on technical confluence alone.
 - If a CRT/Turtle Soup setup is detected AND its direction matches this trade's direction, this is a strong named-strategy confluence signal — especially if MSS is confirmed. This should push toward higher confidence. If MSS is not yet confirmed, weight it less.
-- If news sentiment is available and STRONGLY contradicts this trade's direction, reduce confidence and favor 1:2 regardless of technicals. If news aligns, it supports higher confidence and 1:3. If unavailable, rely on technicals alone.
+- If news sentiment is available and marked LOW CONFIDENCE, do not let it meaningfully sway the ratio decision — mention it only briefly as an aside, and rely on technicals as the primary driver. If news sentiment is available with a healthy sample (not low confidence) and STRONGLY contradicts this trade's direction, reduce confidence and favor 1:2 regardless of technicals. If it aligns with good sample size, it supports higher confidence and 1:3. If unavailable, rely on technicals alone.
 
 First, write 4-6 short sentences of plain-language reasoning: address the opposite-direction existing position first if one exists, then cover the other factors above.
 
@@ -278,11 +280,8 @@ CONFIDENCE: [high/medium/low]
     ...parsed,
   };
 }
+
 function parseTradeBlock(raw, zone) {
-  // Only trust the LLM for RATIO and CONFIDENCE — these are judgment calls.
-  // Entry/StopLoss/TakeProfit are ALWAYS taken from our own calculated zone
-  // data, never from what the LLM writes, so the ratio math is guaranteed
-  // to be exact (no LLM transcription drift).
   const ratioMatch = raw.match(/RATIO:\s*(1:[23])/i);
   const confMatch = raw.match(/CONFIDENCE:\s*(high|medium|low)/i);
 
@@ -343,7 +342,7 @@ async function getTradeRecommendationVoice(symbol, name) {
     console.log(`CRT/Turtle Soup: ${result.crt.direction} sweep, MSS ${result.crt.mssConfirmed ? 'confirmed' : 'not yet confirmed'}`);
   }
   if (result.news && result.news.available) {
-    console.log(`News sentiment: ${result.news.label} (${result.news.averageScore})`);
+    console.log(`News sentiment: ${result.news.label} (${result.news.averageScore})${result.news.lowConfidence ? ' [low confidence]' : ''}`);
   }
   console.log('');
 
