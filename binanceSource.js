@@ -4,8 +4,9 @@ const SYMBOL_MAP = {
   'ETH/USD': 'ETHUSDT',
   'SOL/USD': 'SOLUSDT',
   'XRP/USD': 'XRPUSDT',
+  'NEAR/USD': 'NEARUSDT',
+  'ZEC/USD': 'ZECUSDT',
 };
-
 function isBinanceSupported(pair) {
   return SYMBOL_MAP.hasOwnProperty(pair);
 }

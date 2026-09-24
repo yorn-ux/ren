@@ -7,8 +7,9 @@ module.exports = [
 
   { symbol: 'XAU/USD', name: 'Gold', type: 'commodity' },
 
-  { symbol: 'BTC/USD', name: 'Bitcoin', type: 'crypto' },
+ { symbol: 'BTC/USD', name: 'Bitcoin', type: 'crypto' },
   { symbol: 'ETH/USD', name: 'Ethereum', type: 'crypto' },
   { symbol: 'SOL/USD', name: 'Solana', type: 'crypto' },
   { symbol: 'XRP/USD', name: 'XRP', type: 'crypto' },
-];
+  { symbol: 'NEAR/USD', name: 'NEAR Protocol', type: 'crypto' },
+  { symbol: 'ZEC/USD', name: 'Zcash', type: 'crypto' },
