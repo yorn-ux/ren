@@ -9,7 +9,7 @@ const ALPHA_TICKER_MAP = {
 // Marketaux uses plain search terms rather than ticker codes
 const MARKETAUX_SEARCH_MAP = {
   'BTC/USD': 'bitcoin', 'ETH/USD': 'ethereum', 'SOL/USD': 'solana', 'XRP/USD': 'xrp',
-  'XAU/USD': 'gold', 'EUR/USD': 'euro dollar', 'GBP/USD': 'pound dollar',
+  'XAU/USD': 'gold price', 'EUR/USD': 'euro dollar', 'GBP/USD': 'pound dollar',
   'USD/JPY': 'yen dollar', 'AUD/USD': 'australian dollar', 'USD/CAD': 'canadian dollar',
 };
 
@@ -45,7 +45,8 @@ async function getFromMarketaux(symbol) {
   const searchTerm = MARKETAUX_SEARCH_MAP[symbol];
   if (!searchTerm) return { available: false, message: `No Marketaux search mapping for ${symbol}` };
 
-  const url = `https://api.marketaux.com/v1/news/all?search=${encodeURIComponent(searchTerm)}&language=en&limit=5&api_token=${process.env.MARKETAUX_API_KEY}`;
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const url = `https://api.marketaux.com/v1/news/all?search=${encodeURIComponent(searchTerm)}&published_after=${sevenDaysAgo}&language=en&limit=5&sort=published_desc&api_token=${process.env.MARKETAUX_API_KEY}`;
   const response = await fetch(url);
   const data = await response.json();
 
@@ -60,9 +61,16 @@ async function getFromMarketaux(symbol) {
   const headlines = [];
   for (const article of data.data) {
     const entity = article.entities?.[0];
-    const score = entity ? parseFloat(entity.sentiment_score) : null;
-    if (score !== null && !isNaN(score)) { totalScore += score; count++; }
-    headlines.push({ title: article.title, sentiment: score > 0 ? 'Bullish' : score < 0 ? 'Bearish' : 'Neutral', time: article.published_at });
+    const score = entity && entity.sentiment_score !== undefined ? parseFloat(entity.sentiment_score) : null;
+    const hasValidScore = score !== null && !isNaN(score);
+
+    if (hasValidScore) { totalScore += score; count++; }
+
+    headlines.push({
+      title: article.title,
+      sentiment: hasValidScore ? (score > 0.1 ? 'Bullish' : score < -0.1 ? 'Bearish' : 'Neutral') : 'No score available',
+      time: article.published_at,
+    });
   }
 
   const avgScore = count > 0 ? totalScore / count : 0;
@@ -82,6 +90,7 @@ function buildResult(avgScore, count, headlines, source) {
     averageScore: avgScore.toFixed(3),
     label,
     articleCount: count,
+    lowConfidence: count < 3, // fewer than 3 scored articles = thin sample, treat cautiously
     recentHeadlines: headlines.slice(0, 3),
   };
 }
