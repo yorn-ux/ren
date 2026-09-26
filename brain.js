@@ -6,6 +6,7 @@ const { getSupportResistance } = require('./support_resistance');
 const { getLiquiditySweeps } = require('./liquidity');
 const { getPerformanceStats } = require('./outcomes');
 const { getCRTSetup } = require('./crt');
+const { getFVGSetup } = require('./fvg');
 const { getNewsSentiment } = require('./news');
 const { calculatePositionSize } = require('./positionSize');
 const { isMarketOpenFor } = require('./marketHours');
@@ -20,7 +21,7 @@ TONE:
 - No generic disclaimers. Trust the user understands suggestions are not directives.
 
 RULES:
-- You will be given REAL calculated indicators, zone data, support/resistance levels, liquidity sweep data, CRT/Turtle Soup data, historical performance stats, existing position data, and sometimes real news sentiment. These are the ONLY facts you know.
+- You will be given REAL calculated indicators, zone data, support/resistance levels, liquidity sweep data, CRT/Turtle Soup data, FVG data, historical performance stats, existing position data, and sometimes real news sentiment. These are the ONLY facts you know.
 - You have NO access to anything beyond what's given to you.
 - NEVER invent dates, events, headlines, or any data point not explicitly provided.
 
@@ -171,6 +172,23 @@ async function getTradeRecommendation(symbol, name = symbol, includeNews = false
   ]);
   const stats = getPerformanceStats();
   const crt = await getCRTSetup(symbol, name).catch(() => ({ hasSetup: false }));
+  const fvg = await getFVGSetup(symbol).catch(() => ({ hasGap: false }));
+
+  // STRICT ENTRY GATE: a zone alone is no longer enough. Require either a
+  // matching-direction FVG or a matching-direction, MSS-confirmed CRT/Turtle
+  // Soup setup before generating an entry at all.
+  const zoneDirLower = zone.direction === 'BUY' ? 'bullish' : 'bearish';
+  const fvgConfirms = fvg.hasGap && fvg.type === zoneDirLower;
+  const crtConfirms = crt.hasSetup && crt.direction === zone.direction && crt.mssConfirmed;
+
+  if (!fvgConfirms && !crtConfirms) {
+    return {
+      hasSetup: false,
+      gateBlocked: true,
+      message: `${name} has a ${zone.zoneType} zone but no confirming FVG or confirmed CRT/Turtle Soup in the same direction — entry criteria not met. Waiting for stronger confluence.`,
+      text: `${name}'s zone setup alone isn't enough right now — no matching Fair Value Gap and no MSS-confirmed CRT/Turtle Soup backing the ${zone.direction} direction. Skipping this one until a real confirming signal shows up.`,
+    };
+  }
 
   let news = { available: false, message: 'News check skipped for this request.' };
   if (includeNews) {
@@ -222,6 +240,9 @@ ${crt.hasSetup
     ? `${crt.direction} setup detected. Daily range: ${crt.dailyRange.low.toFixed(5)} - ${crt.dailyRange.high.toFixed(5)}. Sweep type: ${crt.sweep.type}, swept level ${crt.sweep.sweptLevel.toFixed(5)}, ${crt.sweep.candlesAgo} candles ago. Market Structure Shift confirmed: ${crt.mssConfirmed ? 'YES' : 'NOT YET'} (${crt.mssReason}).`
     : 'No CRT/Turtle Soup setup currently detected.'}
 
+FAIR VALUE GAP (FVG):
+${fvg.hasGap ? `${fvg.type} FVG active, range ${fvg.gapLow.toFixed(5)} - ${fvg.gapHigh.toFixed(5)}, ${fvg.candlesAgo} candles old. This CONFIRMS entry criteria for this ${zone.direction} setup.` : 'No active FVG confirming this setup (confirmation came from CRT/Turtle Soup instead).'}
+
 NEWS SENTIMENT:
 ${newsText}`;
 
@@ -231,6 +252,8 @@ YOUR TASK: Decide whether the 1:2 or 1:3 risk-reward ratio is more realistic for
 
 IMPORTANT CONTEXT: If an existing position is noted above as the OPPOSITE direction to this new setup, acknowledge that clearly first — this represents a potential reversal signal and the user should understand the existing trade may be at risk of reversing before deciding on this new setup.
 
+Also note: this setup has already passed a strict entry gate — it has a confirming FVG or an MSS-confirmed CRT/Turtle Soup in the same direction as the zone. Mention which one confirmed it in your reasoning.
+
 Then consider ALL of these for the ratio decision:
 - If other supply/demand zones sit between entry and the 1:3 target, favor 1:2.
 - If a strong support/resistance level (tested 3+ times) sits between entry and the 1:3 target blocking the move, favor 1:2. If the path is clear, 1:3 has more support.
@@ -238,10 +261,10 @@ Then consider ALL of these for the ratio decision:
 - If counter-trend or RSI already extreme in the trade's favor, favor 1:2.
 - If a recent liquidity sweep occurred in the SAME direction as this trade, this strengthens confidence toward 1:3. If it contradicts the trade direction, favor 1:2.
 - If historical data shows 5+ closed trades for a ratio, weigh that real track record in. A ratio with a low win rate should require stronger confluence to justify reuse. If fewer than 5 closed trades exist, say so explicitly and rely on technical confluence alone.
-- If a CRT/Turtle Soup setup is detected AND its direction matches this trade's direction, this is a strong named-strategy confluence signal — especially if MSS is confirmed. This should push toward higher confidence. If MSS is not yet confirmed, weight it less.
+- If BOTH FVG and CRT/Turtle Soup confirm (not just one), this is exceptionally strong confluence — favor higher confidence and 1:3.
 - If news sentiment is available and marked LOW CONFIDENCE, do not let it meaningfully sway the ratio decision — mention it only briefly as an aside, and rely on technicals as the primary driver. If news sentiment is available with a healthy sample (not low confidence) and STRONGLY contradicts this trade's direction, reduce confidence and favor 1:2 regardless of technicals. If it aligns with good sample size, it supports higher confidence and 1:3. If unavailable, rely on technicals alone.
 
-First, write 4-6 short sentences of plain-language reasoning: address the opposite-direction existing position first if one exists, then cover the other factors above.
+First, write 4-6 short sentences of plain-language reasoning: address the opposite-direction existing position first if one exists, then state which gate condition confirmed entry (FVG, CRT, or both), then cover the other factors above.
 
 Then end your response with EXACTLY this block, filled in with real numbers (no extra text after it):
 
@@ -274,6 +297,7 @@ CONFIDENCE: [high/medium/low]
     text: reasoningText,
     status,
     crt,
+    fvg,
     news,
     existingPosition: existingSameDirection,
     positionSize,
@@ -340,6 +364,9 @@ async function getTradeRecommendationVoice(symbol, name) {
   }
   if (result.crt && result.crt.hasSetup) {
     console.log(`CRT/Turtle Soup: ${result.crt.direction} sweep, MSS ${result.crt.mssConfirmed ? 'confirmed' : 'not yet confirmed'}`);
+  }
+  if (result.fvg && result.fvg.hasGap) {
+    console.log(`FVG: ${result.fvg.type}, range ${result.fvg.gapLow}-${result.fvg.gapHigh}`);
   }
   if (result.news && result.news.available) {
     console.log(`News sentiment: ${result.news.label} (${result.news.averageScore})${result.news.lowConfidence ? ' [low confidence]' : ''}`);
