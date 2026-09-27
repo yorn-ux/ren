@@ -1,5 +1,9 @@
 const { getCandles, getIndicators } = require('./indicators');
 
+// How close to the zone price needs to be for us to treat it as "at the zone"
+// and enter at market. 0.5% is a reasonable band for 1h charts.
+const NEAR_ZONE_PCT = 0.5;
+
 function findZones(candles) {
   const zones = [];
 
@@ -28,6 +32,41 @@ function findZones(candles) {
   return zones;
 }
 
+// Determine entry based on where current price sits relative to the zone.
+//
+// For a DEMAND zone (BUY):
+//   - price inside zone       → entry = currentPrice (enter at market now)
+//   - price within NEAR band  → entry = currentPrice (essentially at zone)
+//   - price above zone        → entry = zoneHigh (wait for pullback, will be
+//                               rejected upstream by the freshness gate if
+//                               too far away)
+//   - price below zone        → entry = currentPrice (already broke down,
+//                               let freshness gate decide)
+//
+// For a SUPPLY zone (SELL): mirrored.
+function computeEntry(zone, currentPrice, direction) {
+  const { zoneHigh, zoneLow } = zone;
+
+  const insideZone = currentPrice >= zoneLow && currentPrice <= zoneHigh;
+
+  if (direction === 'BUY') {
+    const nearAbove = currentPrice > zoneHigh
+      && (currentPrice - zoneHigh) / currentPrice * 100 <= NEAR_ZONE_PCT;
+
+    if (insideZone || nearAbove) return currentPrice;
+    if (currentPrice < zoneLow) return currentPrice; // broke down — freshness decides
+    return zoneHigh; // waiting for pullback (likely rejected upstream)
+  }
+
+  // SELL
+  const nearBelow = currentPrice < zoneLow
+    && (zoneLow - currentPrice) / currentPrice * 100 <= NEAR_ZONE_PCT;
+
+  if (insideZone || nearBelow) return currentPrice;
+  if (currentPrice > zoneHigh) return currentPrice; // broke up — freshness decides
+  return zoneLow; // waiting for rally (likely rejected upstream)
+}
+
 // Gathers everything needed to judge the setup — no ratio decision made here
 async function getZoneAnalysis(symbol) {
   const candles = await getCandles(symbol, '1h', 60);
@@ -44,14 +83,24 @@ async function getZoneAnalysis(symbol) {
 
   if (zone.type === 'demand') {
     direction = 'BUY';
-    entry = zone.zoneHigh;
+    entry = computeEntry(zone, currentPrice, direction);
     stopLoss = zone.zoneLow;
     risk = entry - stopLoss;
   } else {
     direction = 'SELL';
-    entry = zone.zoneLow;
+    entry = computeEntry(zone, currentPrice, direction);
     stopLoss = zone.zoneHigh;
     risk = stopLoss - entry;
+  }
+
+  // Guard: if entry ended up on the wrong side of the stop (can happen if
+  // price broke through the zone), the setup is invalid.
+  if (risk <= 0) {
+    return {
+      hasSetup: false,
+      currentPrice,
+      message: `Price has broken through the ${zone.type} zone — setup invalidated.`,
+    };
   }
 
   const target2R = direction === 'BUY' ? entry + (risk * 2) : entry - (risk * 2);

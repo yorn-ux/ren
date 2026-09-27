@@ -1,10 +1,14 @@
 require('dotenv').config();
 const readline = require('readline');
-const { analyzeAssetVoice, getTradeRecommendationVoice } = require('./brain');
+const { getTradeRecommendation, getTradeRecommendationVoice } = require('./brain');
 const { startScheduler, runScan } = require('./scheduler');
 const { getActiveMode, setActiveMode } = require('./modes');
 const { listPending, approveLatest, rejectLatest } = require('./approvals');
 const watchlist = require('./watchlist');
+
+// Starting the server here means it boots automatically with index.js —
+// no need to run `node server.js` separately in another console.
+require('./server');
 
 function findAsset(query) {
   const q = query.toLowerCase();
@@ -72,16 +76,17 @@ async function handleCommand(input) {
   console.log(`Matched: ${asset.name}`);
 
   if (text.includes('trade') || text.includes('entry') || text.includes('setup')) {
-    await getTradeRecommendationVoice(asset.symbol, asset.name); // still works — speak() is now a silent no-op
+    await getTradeRecommendationVoice(asset.symbol, asset.name); // speak() is a no-op now, safe to keep calling
   } else {
-    await analyzeAssetVoice(asset.symbol, asset.name); // same here
+    const result = await getTradeRecommendation(asset.symbol, asset.name);
+    console.log(JSON.stringify(result, null, 2));
   }
 }
 
 function startTextMenu() {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
-  console.log('\n=== Ren — Text Mode (voice disabled, dashboard is primary) ===');
+  console.log('\n=== Ren — Text Mode (dashboard also running at http://localhost:3000) ===');
   console.log('Commands: an asset name | "trade setup on [asset]" | "scan" | "pending" | "approve [asset]" | "reject [asset]" | "switch to [pulse/focus/grind]" | "exit"\n');
 
   const ask = () => {

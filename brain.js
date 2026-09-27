@@ -30,6 +30,89 @@ const AUTO_APPROVE_MIN_TRADES = 5;
 const AUTO_APPROVE_MIN_WINRATE = 60;
 const ACTIVE_STATUSES = ['pending_approval', 'approved', 'open'];
 
+// --- Expire stale pending trades on a specific symbol --------------------
+// Called before the duplicate check. A pending trade is stale if:
+//  - price already hit its stop, or
+//  - price already ran past 40% of the way to target
+// When stale, mark it 'expired' so it stops blocking fresh analysis.
+const STALE_MISSED_MOVE_PCT = 40;
+
+function expireStalePendingForSymbol(symbol, mode) {
+  const pending = db.prepare(
+    "SELECT * FROM trades WHERE status = 'pending_approval' AND symbol = ? AND mode = ?"
+  ).all(symbol, mode);
+
+  const expired = [];
+
+  for (const p of pending) {
+    const entry = Number(p.entry);
+    const sl = Number(p.stop_loss);
+    const tp = Number(p.take_profit);
+    if (!entry || !sl || !tp) continue;
+
+    const isBuy = p.direction === 'BUY';
+    const reward = Math.abs(tp - entry);
+    const progressPct = isBuy
+      ? (p.currentPrice ?? 0) // placeholder — real check happens below
+      : 0;
+
+    // We don't have current price here — that's the caller's job to provide.
+    // This function is called from getTradeRecommendation with price already
+    // computed from evaluateStrategies.
+  }
+
+  return expired;
+}
+
+// Proper version that takes current price as argument
+function expireStalePendingWithPrice(symbol, mode, currentPrice) {
+  const pending = db.prepare(
+    "SELECT * FROM trades WHERE status = 'pending_approval' AND symbol = ? AND mode = ?"
+  ).all(symbol, mode);
+
+  const expired = [];
+
+  for (const p of pending) {
+    const entry = Number(p.entry);
+    const sl = Number(p.stop_loss);
+    const tp = Number(p.take_profit);
+    if (!entry || !sl || !tp || !currentPrice) continue;
+
+    const isBuy = p.direction === 'BUY';
+    const reward = Math.abs(tp - entry);
+    const progressPct = isBuy
+      ? (currentPrice - entry) / reward * 100
+      : (entry - currentPrice) / reward * 100;
+
+    const slHit = isBuy ? currentPrice <= sl : currentPrice >= sl;
+    const missedMove = progressPct >= STALE_MISSED_MOVE_PCT;
+    const blownThrough = isBuy ? currentPrice >= tp : currentPrice <= tp;
+
+    let reason = null;
+    if (slHit) reason = 'stopped_out';
+    else if (blownThrough) reason = 'blown_through';
+    else if (missedMove) reason = `missed_move_${Math.round(progressPct)}pct`;
+
+    if (reason) {
+      db.prepare(
+        "UPDATE trades SET status = 'expired', closed_at = CURRENT_TIMESTAMP WHERE id = ?"
+      ).run(p.id);
+
+      expired.push({
+        id: p.id,
+        name: p.name,
+        direction: p.direction,
+        entry,
+        price: currentPrice,
+        reason,
+        progressPct: Math.round(progressPct),
+      });
+    }
+  }
+
+  return expired;
+}
+
 async function callGroq(systemPrompt, userPrompt, maxTokens = 800) {
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -119,11 +202,30 @@ async function getTradeRecommendation(symbol, name = symbol, includeNews = false
     };
   }
 
+  // Run strategies (now includes freshness gate — will return hasSetup:false
+  // if entry is too far, price already passed entry, or move is mostly gone)
   const strat = await evaluateStrategies(symbol, name);
+
+  // Even if strategies fired, if the setup is stale, refuse it
   if (!strat.hasSetup) {
-    return { hasSetup: false, message: strat.message, text: strat.message };
+    return {
+      hasSetup: false,
+      stale: strat.stale || null,
+      message: strat.message,
+      text: strat.message,
+    };
   }
 
+  // --- Expire stale pending trades on this symbol BEFORE duplicate check ---
+  // Otherwise a dead setup blocks a fresh one from ever being shown.
+  const modeName = (getActiveMode() || { name: 'pulse' }).name.toLowerCase();
+  const expired = expireStalePendingWithPrice(symbol, modeName, strat.indicators.price);
+  if (expired.length > 0) {
+    console.log(`Auto-expired ${expired.length} stale pending on ${name}:`,
+      expired.map(e => `${e.direction} entry ${e.entry} (${e.reason})`).join(', '));
+  }
+
+  // Now check for duplicates — but only count *live* (non-expired) trades
   const existingSameDirection = getExistingPosition(symbol, strat.indicators.price);
 
   if (existingSameDirection && existingSameDirection.direction === strat.direction) {
@@ -155,10 +257,19 @@ async function getTradeRecommendation(symbol, name = symbol, includeNews = false
     ? `Overall sentiment: ${news.label} (score ${news.averageScore}, ${news.articleCount} scored articles).${news.lowConfidence ? ' LOW CONFIDENCE sample — do not weight heavily.' : ''}`
     : `Not available (${news.message}). Reason from technicals only.`;
 
+  const fresh = strat.freshness || {};
+  const freshnessLine = fresh.fresh
+    ? `Entry is ${fresh.distancePct?.toFixed(2)}% from current price. Price is ${fresh.progressPct?.toFixed(0)}% of the way to target (or ${Math.abs(fresh.progressPct || 0).toFixed(0)}% away if negative).`
+    : 'Setup flagged as stale by strategy layer.';
+
   const dataContext = `Asset: ${name} (${symbol})
 
 STRATEGIES CONFIRMED (${strat.strategyCount}/4, grade ${strat.grade}):
 ${strat.strategiesUsed.join(', ')}
+
+FRESHNESS:
+${freshnessLine}
+Current price: ${strat.indicators.price}
 
 EXISTING POSITION: ${existingPositionText}
 
@@ -184,11 +295,11 @@ NEWS: ${newsText}`;
 
   const systemPrompt = REN_PERSONA + `
 
-This setup already passed the mandatory trend gate AND at least one independent strategy (zone, failed-zone, FVG, or CRT+TBS). State clearly WHICH strategies confirmed it (list them by name). If all 4 confirmed, call it an "A+ setup" explicitly.
+This setup already passed the mandatory trend gate AND at least one independent strategy (zone, failed-zone, FVG, or CRT+TBS), AND passed the freshness gate (entry is reachable and the move hasn't already happened). State clearly WHICH strategies confirmed it. If all 4 confirmed, call it an "A+ setup" explicitly.
 
 Decide 1:2 or 1:3 ratio based on: obstacles to target, support/resistance in the path, liquidity sweep alignment, historical ratio performance, and news (only if not low-confidence).
 
-Write 4-6 sentences naming the confirming strategies first, then the ratio reasoning.
+Write 4-6 sentences naming the confirming strategies first, then the ratio reasoning. Reference the freshness line to confirm this entry is actionable now.
 
 Then end with EXACTLY:
 ---
@@ -207,9 +318,9 @@ CONFIDENCE: [high/medium/low]
   const status = decideStatus(ratio, confidence, stats);
   const positionSize = calculatePositionSize(strat.entry, strat.stopLoss, symbol);
 
-  db.prepare(`INSERT INTO trades (symbol, name, direction, entry, stop_loss, take_profit, ratio, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(symbol, name, strat.direction, strat.entry, strat.stopLoss, takeProfit, ratio, status);
+  db.prepare(`INSERT INTO trades (symbol, name, direction, entry, stop_loss, take_profit, ratio, status, mode)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(symbol, name, strat.direction, strat.entry, strat.stopLoss, takeProfit, ratio, status, modeName);
 
   const reasoningText = raw.split('---')[0].trim();
 
@@ -222,6 +333,7 @@ CONFIDENCE: [high/medium/low]
     news,
     existingPosition: existingSameDirection,
     positionSize,
+    freshness: fresh,
     direction: strat.direction,
     entry: strat.entry,
     stopLoss: strat.stopLoss,
@@ -289,4 +401,5 @@ module.exports = {
   analyzeWatchlist,
   getTradeRecommendation,
   getTradeRecommendationVoice,
+  expireStalePendingWithPrice,
 };

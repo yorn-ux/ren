@@ -7,7 +7,7 @@
 <style>
   :root {
     --bg: #101211; --surface: #1a1c1a; --surface-2: #212420; --surface-hover: #282b27;
-    --border: #2e322d; --text: #eae7de; --text-dim: #--text-dim: #9c988a; --text-faint: #6b6f66;
+    --border: #2e322d; --text: #eae7de; --text-dim: #9c988a; --text-faint: #6b6f66;
     --accent: #e8a13c; --accent-dim: #3a2c14; --accent-soft: #f0b862;
     --teal: #4fb8a6; --teal-dim: #16332e;
     --green: #7bc47f; --green-dim: #1c2e1c;
@@ -124,6 +124,7 @@
   .status-badge.hit_tp { background: var(--green-dim); color: var(--green); }
   .status-badge.rejected, .status-badge.hit_sl { background: var(--red-dim); color: var(--red); }
   .status-badge.pending_approval { background: var(--amber-dim); color: var(--amber); }
+  .status-badge.expired, .status-badge.missed_tp, .status-badge.missed_sl { background: var(--surface-hover); color: var(--text-faint); }
 
   .crt-badge {
     display: inline-flex; align-items: center; gap: 6px;
@@ -373,11 +374,11 @@ function renderApproved() {
 }
 
 function renderHistory() {
-  const history = allTrades.filter(t => ['hit_tp', 'hit_sl', 'rejected'].includes(t.status));
+  const history = allTrades.filter(t => ['hit_tp', 'hit_sl', 'rejected', 'expired', 'missed_tp', 'missed_sl'].includes(t.status));
   document.getElementById('count-history').textContent = history.length;
   document.getElementById('history-container').innerHTML = history.length
     ? history.map(t => tradeRowHtml(t, false)).join('')
-    : '<div class="empty">No closed or rejected trades yet.</div>';
+    : '<div class="empty">No closed, rejected, or expired trades yet.</div>';
 }
 
 async function loadWatchlist() {
@@ -439,10 +440,11 @@ async function analyzeAsset(symbol, name, btn) {
         <div class="detail-row"><span>Ratio / Confidence</span><span>${result.ratio} / ${result.confidence}</span></div>
         ${result.positionSize && !result.positionSize.error ? `<div class="detail-row"><span>Position Size</span><span>${result.positionSize.isForex ? result.positionSize.lots + ' lots' : result.positionSize.units + ' units'} (risk $${result.positionSize.riskAmount})</span></div>` : ''}
         <div class="detail-row"><span>Status</span><span class="status-badge ${result.status}">${result.status.replace('_',' ')}</span></div>
-        ${result.crt && result.crt.hasSetup ? `<div class="crt-badge ${result.crt.mssConfirmed ? 'mss-confirmed' : ''}"><span class="crt-dot"></span>CRT ${result.crt.direction} sweep detected</div>` : ''}
+        ${result.grade ? `<div class="detail-row"><span>Grade</span><span>${result.grade}</span></div>` : ''}
+        ${result.strategiesUsed ? `<div class="detail-row"><span>Strategies</span><span>${result.strategiesUsed.join(', ')}</span></div>` : ''}
         ${result.news && result.news.available ? `<div class="detail-row" style="margin-top:8px;"><span>News Sentiment</span><span>${result.news.label} (${result.news.averageScore})</span></div>` : ''}
       `;
-      crtResults[name] = result.crt || null;
+      crtResults[name] = null;
     }
     renderCRTSection();
     await refreshAllPulseData();
