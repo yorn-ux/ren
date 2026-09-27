@@ -1,6 +1,6 @@
 const db = require('./db');
+const { isBinanceSupported } = require('./binanceSource');
 
-// Simple key-value settings table for things like account balance and risk %
 function ensureSettingsTable() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -37,8 +37,6 @@ function setRiskPercent(percent) {
   setSetting('risk_percent', percent);
 }
 
-// Core calculation: given entry/stop and account settings, how many units
-// (or lots, for forex) should be traded to risk exactly the configured %.
 function calculatePositionSize(entry, stopLoss, symbol) {
   const balance = getAccountBalance();
   const riskPercent = getRiskPercent();
@@ -49,19 +47,26 @@ function calculatePositionSize(entry, stopLoss, symbol) {
     return { error: 'Entry and stop loss cannot be equal' };
   }
 
-  // Units of the asset such that (units * priceDistance) = riskAmount
   const units = riskAmount / priceDistance;
 
-  // Forex lot sizing: standard lot = 100,000 units of base currency
-  const isForex = symbol.includes('/') && !['BTC', 'ETH', 'SOL', 'XRP', 'XAU'].some(c => symbol.startsWith(c));
-  const lots = isForex ? (units / 100000).toFixed(3) : null;
+  // Crypto (routed through Binance) = trade in raw units/coins, always with
+  // enough decimal precision to show fractional amounts on small accounts.
+  // Everything else (forex, gold) = standard lot sizing, 100,000 units/lot.
+  const isCrypto = isBinanceSupported(symbol);
+  const isForex = !isCrypto;
+
+  const lots = isForex ? (units / 100000).toFixed(4) : null;
+
+  // Always keep enough decimal precision — 6 decimals covers small accounts
+  // trading fractional crypto units, and is still readable for larger ones.
+  const unitsDisplay = units.toFixed(6);
 
   return {
     accountBalance: balance,
     riskPercent,
     riskAmount: riskAmount.toFixed(2),
     priceDistance: priceDistance.toFixed(5),
-    units: units.toFixed(isForex ? 0 : 6),
+    units: unitsDisplay,
     lots,
     isForex,
   };

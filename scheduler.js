@@ -1,5 +1,5 @@
 const { getTradeRecommendation } = require('./brain');
-const { checkOpenTrades } = require('./outcomes');
+const { checkOpenTrades, checkPendingOutcomes } = require('./outcomes');
 const { checkEntryAlerts } = require('./entryAlerts');
 const { cleanupRejectedTrades, cleanupStalePendingTrades } = require('./cleanup');
 const { notify } = require('./notify');
@@ -21,13 +21,26 @@ async function runScan() {
       const outcomes = await checkOpenTrades();
       if (outcomes.length > 0) {
         const summary = outcomes.map(o => `${o.name} ${o.ratio} ${o.outcome === 'hit_tp' ? 'hit target' : 'hit stop'}`).join('. ');
-        console.log('Outcomes:', summary);
+        console.log('Outcomes (approved trades):', summary);
         notify('Ren — Trade Outcomes', summary);
       } else {
-        console.log('No trades closed this scan.');
+        console.log('No approved trades closed this scan.');
       }
     } catch (err) {
       console.log('Outcome check failed:', err.message);
+    }
+
+    try {
+      const pendingOutcomes = await checkPendingOutcomes();
+      if (pendingOutcomes.length > 0) {
+        const summary = pendingOutcomes.map(o => `${o.name} would have ${o.outcome === 'missed_tp' ? 'hit target' : 'hit stop'} (never approved)`).join('. ');
+        console.log('Pending outcomes:', summary);
+        notify('Ren — Missed Setups', summary);
+      } else {
+        console.log('No pending (unapproved) trades resolved this scan.');
+      }
+    } catch (err) {
+      console.log('Pending outcome check failed:', err.message);
     }
 
     try {
@@ -51,7 +64,7 @@ async function runScan() {
     try {
       const staleResult = await cleanupStalePendingTrades();
       if (staleResult.deletedCount > 0) {
-        console.log(`Removed ${staleResult.deletedCount} stale pending trade(s): ${staleResult.deletedNames.join(', ')}`);
+        console.log(`Removed ${staleResult.deletedCount} genuinely stale pending trade(s): ${staleResult.deletedNames.join(', ')}`);
       }
     } catch (err) {
       console.log('Stale-pending cleanup failed:', err.message);
@@ -90,7 +103,7 @@ async function runScan() {
 function startScheduler() {
   runScan();
   setInterval(runScan, 60 * 60 * 1000);
-  console.log('Scheduler running. Ren will scan every hour: outcomes, entry alerts, cleanup, then new setups.');
+  console.log('Scheduler running. Ren will scan every hour: outcomes, pending outcomes, entry alerts, cleanup, then new setups.');
 }
 
 module.exports = { runScan, startScheduler };

@@ -57,7 +57,6 @@ async function getZoneAnalysis(symbol) {
   const target2R = direction === 'BUY' ? entry + (risk * 2) : entry - (risk * 2);
   const target3R = direction === 'BUY' ? entry + (risk * 3) : entry - (risk * 3);
 
-  // Check for other zones sitting between entry and the 3R target (potential obstacles)
   const pathMin = Math.min(target3R, entry);
   const pathMax = Math.max(target3R, entry);
   const obstacleZones = zones
@@ -80,8 +79,8 @@ async function getZoneAnalysis(symbol) {
     target2R,
     target3R,
     obstacleCount: obstacleZones.length,
-    indicators, // { price, sma20, sma50, rsi14 }
+    indicators,
   };
 }
 
-module.exports = { getZoneAnalysis };
+module.exports = { getZoneAnalysis, findZones };
