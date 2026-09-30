@@ -2,7 +2,6 @@ require('dotenv').config();
 const { getActiveMode } = require('./modes');
 const { evaluateStrategies } = require('./strategies');
 const { getSupportResistance } = require('./support_resistance');
-const { getLiquiditySweeps } = require('./liquidity');
 const { getPerformanceStats } = require('./outcomes');
 const { getNewsSentiment } = require('./news');
 const { calculatePositionSize } = require('./positionSize');
@@ -18,7 +17,7 @@ TONE:
 - No generic disclaimers. Trust the user understands suggestions are not directives.
 
 RULES:
-- You will be given REAL calculated data about which trading strategies confirmed this setup, support/resistance, liquidity sweeps, historical performance, existing position data, and sometimes real news sentiment. These are the ONLY facts you know.
+- You will be given REAL calculated data about which trading strategies confirmed this setup, support/resistance, historical performance, existing position data, and sometimes real news sentiment. These are the ONLY facts you know.
 - You have NO access to anything beyond what's given to you.
 - NEVER invent dates, events, headlines, or any data point not explicitly provided.
 
@@ -29,42 +28,8 @@ SIGN-OFF: End every suggestion with "That's the read. Your call."`;
 const AUTO_APPROVE_MIN_TRADES = 5;
 const AUTO_APPROVE_MIN_WINRATE = 60;
 const ACTIVE_STATUSES = ['pending_approval', 'approved', 'open'];
-
-// --- Expire stale pending trades on a specific symbol --------------------
-// Called before the duplicate check. A pending trade is stale if:
-//  - price already hit its stop, or
-//  - price already ran past 40% of the way to target
-// When stale, mark it 'expired' so it stops blocking fresh analysis.
 const STALE_MISSED_MOVE_PCT = 40;
 
-function expireStalePendingForSymbol(symbol, mode) {
-  const pending = db.prepare(
-    "SELECT * FROM trades WHERE status = 'pending_approval' AND symbol = ? AND mode = ?"
-  ).all(symbol, mode);
-
-  const expired = [];
-
-  for (const p of pending) {
-    const entry = Number(p.entry);
-    const sl = Number(p.stop_loss);
-    const tp = Number(p.take_profit);
-    if (!entry || !sl || !tp) continue;
-
-    const isBuy = p.direction === 'BUY';
-    const reward = Math.abs(tp - entry);
-    const progressPct = isBuy
-      ? (p.currentPrice ?? 0) // placeholder — real check happens below
-      : 0;
-
-    // We don't have current price here — that's the caller's job to provide.
-    // This function is called from getTradeRecommendation with price already
-    // computed from evaluateStrategies.
-  }
-
-  return expired;
-}
-
-// Proper version that takes current price as argument
 function expireStalePendingWithPrice(symbol, mode, currentPrice) {
   const pending = db.prepare(
     "SELECT * FROM trades WHERE status = 'pending_approval' AND symbol = ? AND mode = ?"
@@ -202,11 +167,8 @@ async function getTradeRecommendation(symbol, name = symbol, includeNews = false
     };
   }
 
-  // Run strategies (now includes freshness gate — will return hasSetup:false
-  // if entry is too far, price already passed entry, or move is mostly gone)
   const strat = await evaluateStrategies(symbol, name);
 
-  // Even if strategies fired, if the setup is stale, refuse it
   if (!strat.hasSetup) {
     return {
       hasSetup: false,
@@ -216,8 +178,6 @@ async function getTradeRecommendation(symbol, name = symbol, includeNews = false
     };
   }
 
-  // --- Expire stale pending trades on this symbol BEFORE duplicate check ---
-  // Otherwise a dead setup blocks a fresh one from ever being shown.
   const modeName = (getActiveMode() || { name: 'pulse' }).name.toLowerCase();
   const expired = expireStalePendingWithPrice(symbol, modeName, strat.indicators.price);
   if (expired.length > 0) {
@@ -225,7 +185,6 @@ async function getTradeRecommendation(symbol, name = symbol, includeNews = false
       expired.map(e => `${e.direction} entry ${e.entry} (${e.reason})`).join(', '));
   }
 
-  // Now check for duplicates — but only count *live* (non-expired) trades
   const existingSameDirection = getExistingPosition(symbol, strat.indicators.price);
 
   if (existingSameDirection && existingSameDirection.direction === strat.direction) {
@@ -238,10 +197,7 @@ async function getTradeRecommendation(symbol, name = symbol, includeNews = false
     };
   }
 
-  const [sr, liquidity] = await Promise.all([
-    getSupportResistance(symbol),
-    getLiquiditySweeps(symbol),
-  ]);
+  const sr = await getSupportResistance(symbol);
   const stats = getPerformanceStats();
 
   let news = { available: false, message: 'News check skipped for this request.' };
@@ -264,8 +220,9 @@ async function getTradeRecommendation(symbol, name = symbol, includeNews = false
 
   const dataContext = `Asset: ${name} (${symbol})
 
-STRATEGIES CONFIRMED (${strat.strategyCount}/4, grade ${strat.grade}):
+STRATEGIES CONFIRMED (${strat.strategyCount}/3, grade ${strat.grade}):
 ${strat.strategiesUsed.join(', ')}
+${strat.liquiditySweepSupport ? 'PLUS: a liquidity sweep in the same direction supports this setup (contributed to the grade, not counted as a separate strategy).' : 'No supporting liquidity sweep detected.'}
 
 FRESHNESS:
 ${freshnessLine}
@@ -287,19 +244,17 @@ SUPPORT/RESISTANCE:
 Nearest resistance: ${sr.nearestResistance ? sr.nearestResistance.level.toFixed(5) + ` (tested ${sr.nearestResistance.touches}x)` : 'none'}
 Nearest support: ${sr.nearestSupport ? sr.nearestSupport.level.toFixed(5) + ` (tested ${sr.nearestSupport.touches}x)` : 'none'}
 
-LIQUIDITY SWEEPS: ${liquidity.hasSweep ? liquidity.sweeps.map(s => s.type).join(', ') : 'none recent'}
-
 HISTORICAL PERFORMANCE: 1:2 ${stats['1:2'].winRate} (${stats['1:2'].total} trades), 1:3 ${stats['1:3'].winRate} (${stats['1:3'].total} trades)
 
 NEWS: ${newsText}`;
 
   const systemPrompt = REN_PERSONA + `
 
-This setup already passed the mandatory trend gate AND at least one independent strategy (zone, failed-zone, FVG, or CRT+TBS), AND passed the freshness gate (entry is reachable and the move hasn't already happened). State clearly WHICH strategies confirmed it. If all 4 confirmed, call it an "A+ setup" explicitly.
+This setup already passed the mandatory trend gate AND at least one of the three independent strategies (Zone, Failed Zone, or FVG), AND passed the freshness gate. State clearly WHICH strategies confirmed it. If all 3 confirmed, or 2 confirmed plus a supporting liquidity sweep, call it an "A+ setup" explicitly.
 
-Decide 1:2 or 1:3 ratio based on: obstacles to target, support/resistance in the path, liquidity sweep alignment, historical ratio performance, and news (only if not low-confidence).
+Decide 1:2 or 1:3 ratio based on: obstacles to target, support/resistance in the path, historical ratio performance, and news (only if not low-confidence).
 
-Write 4-6 sentences naming the confirming strategies first, then the ratio reasoning. Reference the freshness line to confirm this entry is actionable now.
+Write 4-6 sentences naming the confirming strategies first (and the supporting sweep if present), then the ratio reasoning. Reference the freshness line to confirm this entry is actionable now.
 
 Then end with EXACTLY:
 ---
@@ -317,12 +272,27 @@ CONFIDENCE: [high/medium/low]
 
   const status = decideStatus(ratio, confidence, stats);
   const positionSize = calculatePositionSize(strat.entry, strat.stopLoss, symbol);
-
-  db.prepare(`INSERT INTO trades (symbol, name, direction, entry, stop_loss, take_profit, ratio, status, mode)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(symbol, name, strat.direction, strat.entry, strat.stopLoss, takeProfit, ratio, status, modeName);
-
   const reasoningText = raw.split('---')[0].trim();
+
+  const contextSnapshot = JSON.stringify({
+    strategiesUsed: strat.strategiesUsed,
+    grade: strat.grade,
+    liquiditySweepSupport: strat.liquiditySweepSupport,
+    indicators: {
+      price: strat.indicators.price,
+      sma20: strat.indicators.sma20,
+      sma50: strat.indicators.sma50,
+      rsi14: strat.indicators.rsi14,
+    },
+    freshness: strat.freshness,
+    rawStrategyData: strat.rawStrategyData,
+    reasoning: reasoningText,
+    news: news.available ? { label: news.label, score: news.averageScore } : null,
+  });
+
+  db.prepare(`INSERT INTO trades (symbol, name, direction, entry, stop_loss, take_profit, ratio, status, mode, context)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(symbol, name, strat.direction, strat.entry, strat.stopLoss, takeProfit, ratio, status, modeName, contextSnapshot);
 
   return {
     hasSetup: true,
@@ -330,6 +300,7 @@ CONFIDENCE: [high/medium/low]
     status,
     grade: strat.grade,
     strategiesUsed: strat.strategiesUsed,
+    liquiditySweepSupport: strat.liquiditySweepSupport,
     news,
     existingPosition: existingSameDirection,
     positionSize,
@@ -363,7 +334,7 @@ async function getTradeRecommendationVoice(symbol, name) {
   }
 
   console.log(`\n--- ${name} [${result.grade} setup — ${result.status}] ---`);
-  console.log(`Strategies: ${result.strategiesUsed.join(', ')}`);
+  console.log(`Strategies: ${result.strategiesUsed.join(', ')}${result.liquiditySweepSupport ? ' + liquidity sweep support' : ''}`);
   console.log(result.text);
   console.log(`${result.direction} @ ${result.entry} | SL ${result.stopLoss} | TP ${result.takeProfit} | ${result.ratio} | ${result.confidence}`);
   if (result.positionSize && !result.positionSize.error) {

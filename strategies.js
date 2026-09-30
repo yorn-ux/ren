@@ -1,14 +1,11 @@
 const { getZoneAnalysis } = require('./zones');
 const { getFailedZoneSetup } = require('./failedZone');
 const { getFVGSetup } = require('./fvg');
-const { getCRTSetup } = require('./crt');
+const { getLiquiditySweeps } = require('./liquidity');
 const { getIndicators } = require('./indicators');
 
-// --- Staleness thresholds -------------------------------------------------
-// Reject setups where the move has already happened or the entry is too far.
-// Tune to your trading style.
-const MAX_ENTRY_DISTANCE_PCT = 3.0;   // entry >3% away from current price = too far
-const MISSED_MOVE_PCT = 40;           // price >40% of the way to target = too late
+const MAX_ENTRY_DISTANCE_PCT = 3.0;
+const MISSED_MOVE_PCT = 40;
 
 function checkTrend(direction, price, sma20, sma50) {
   if (sma50 === null) return false;
@@ -16,27 +13,15 @@ function checkTrend(direction, price, sma20, sma50) {
   return price < sma20 && sma20 < sma50;
 }
 
-// Evaluate how fresh a setup is given current price vs entry/target.
-// Returns { fresh, reason, message, distancePct, progressPct }
-//
-// Rejection reasons:
-//   too_far       — entry is >MAX_ENTRY_DISTANCE_PCT away from current price
-//   entry_passed  — price has moved past entry toward target (missed the trigger)
-//   missed_move   — price is ≥MISSED_MOVE_PCT of the way to target
-//   blown_through — price has already reached target
 function evaluateFreshness(direction, currentPrice, entry, target2R) {
   const isBuy = direction === 'BUY';
   const reward = Math.abs(target2R - entry);
-
   const distancePct = Math.abs(entry - currentPrice) / currentPrice * 100;
 
-  // Positive = moving toward target (missed the entry)
-  // Negative = moving away from entry (deeper into the zone — potential wait)
   const progressPct = isBuy
     ? (currentPrice - entry) / reward * 100
     : (entry - currentPrice) / reward * 100;
 
-  // 1. Entry too far to be actionable now — regardless of direction
   if (distancePct > MAX_ENTRY_DISTANCE_PCT) {
     return {
       fresh: false,
@@ -47,7 +32,6 @@ function evaluateFreshness(direction, currentPrice, entry, target2R) {
     };
   }
 
-  // 2. Price blew through target — dead setup
   const blownThrough = isBuy ? currentPrice >= target2R : currentPrice <= target2R;
   if (blownThrough) {
     return {
@@ -59,7 +43,6 @@ function evaluateFreshness(direction, currentPrice, entry, target2R) {
     };
   }
 
-  // 3. Price already ran past entry toward target
   const entryAlreadyPassed = isBuy ? currentPrice > entry : currentPrice < entry;
 
   if (entryAlreadyPassed && progressPct >= MISSED_MOVE_PCT) {
@@ -72,8 +55,6 @@ function evaluateFreshness(direction, currentPrice, entry, target2R) {
     };
   }
 
-  // 4. Price passed entry but hasn't gone far yet — still a miss
-  //    (catches the "34% progress, 5% away" dead-zone case)
   if (entryAlreadyPassed) {
     return {
       fresh: false,
@@ -84,30 +65,25 @@ function evaluateFreshness(direction, currentPrice, entry, target2R) {
     };
   }
 
-  // Otherwise fresh — entry is nearby and not yet triggered
-  return {
-    fresh: true,
-    reason: 'fresh',
-    message: '',
-    distancePct,
-    progressPct,
-  };
+  return { fresh: true, reason: 'fresh', message: '', distancePct, progressPct };
 }
 
-// Runs all four strategies independently. Each must ALSO pass the trend
-// gate on its own to count. Returns which ones fired, their directions,
-// and picks the best available entry/SL/TP to use.
+// Runs the 3 real strategies (Zone, Failed Zone, FVG) independently, each
+// gated by trend. Liquidity sweeps are NOT a separate strategy — they're
+// checked once and attached as supporting evidence to whichever strategy
+// fired, since a sweep and a failed-zone reversal are often the same event
+// seen two ways. Counting them separately would double-count one signal.
 async function evaluateStrategies(symbol, name = symbol) {
   const ind = await getIndicators(symbol);
   if (!ind.rsi14 || ind.sma50 === null) {
     return { hasSetup: false, message: `${name} doesn't have enough history to evaluate strategies yet.` };
   }
 
-  const [zone, failedZone, fvg, crt] = await Promise.all([
+  const [zone, failedZone, fvg, liquidity] = await Promise.all([
     getZoneAnalysis(symbol).catch(() => ({ hasSetup: false })),
     getFailedZoneSetup(symbol).catch(() => ({ hasSetup: false })),
     getFVGSetup(symbol).catch(() => ({ hasGap: false })),
-    getCRTSetup(symbol, name).catch(() => ({ hasSetup: false })),
+    getLiquiditySweeps(symbol).catch(() => ({ hasSweep: false })),
   ]);
 
   const fired = [];
@@ -127,18 +103,13 @@ async function evaluateStrategies(symbol, name = symbol) {
     }
   }
 
-  if (crt.hasSetup && crt.mssConfirmed && checkTrend(crt.direction, ind.price, ind.sma20, ind.sma50)) {
-    fired.push({ name: 'CRT + Turtle Soup', direction: crt.direction, data: crt });
-  }
-
   if (fired.length === 0) {
     return {
       hasSetup: false,
-      message: `${name}: no strategy confirmed a trend-aligned setup right now (checked zone, failed-zone, FVG, CRT+TBS).`,
+      message: `${name}: no strategy confirmed a trend-aligned setup right now (checked zone, failed-zone, FVG).`,
     };
   }
 
-  // All fired strategies must agree on direction, or we don't have a clean signal
   const directions = new Set(fired.map(f => f.direction));
   if (directions.size > 1) {
     return {
@@ -149,22 +120,26 @@ async function evaluateStrategies(symbol, name = symbol) {
 
   const direction = fired[0].direction;
   const strategyNames = fired.map(f => f.name);
-  const grade = fired.length === 4 ? 'A+' : fired.length >= 2 ? 'A' : 'B';
 
-  // Pick entry/SL/TP: prefer zone (most conservative, real S/D levels), then
-  // CRT (has its own real levels), then failed-zone, then FVG last.
+  // Liquidity sweep as supporting evidence: boosts grade by one tier if it
+  // aligns with the trade direction, but never counted as a 4th strategy.
+  const sweepAligns = liquidity.hasSweep && liquidity.sweeps.some(s => {
+    const sweepDirection = s.type.includes('bearish') ? 'SELL' : 'BUY';
+    return sweepDirection === direction;
+  });
+
+  let baseGrade = fired.length >= 3 ? 'A+' : fired.length === 2 ? 'A' : 'B';
+  if (sweepAligns && baseGrade === 'B') baseGrade = 'A';
+  else if (sweepAligns && baseGrade === 'A') baseGrade = 'A+';
+
   let entry, stopLoss;
   const zoneFired = fired.find(f => f.name === 'Supply/Demand Zone');
-  const crtFired = fired.find(f => f.name === 'CRT + Turtle Soup');
   const failedZoneFired = fired.find(f => f.name === 'Failed Zone (reclaim)');
   const fvgFired = fired.find(f => f.name === 'Fair Value Gap');
 
   if (zoneFired) {
     entry = zoneFired.data.entry;
     stopLoss = zoneFired.data.stopLoss;
-  } else if (crtFired) {
-    entry = crtFired.data.entry;
-    stopLoss = crtFired.data.stopLoss;
   } else if (failedZoneFired) {
     entry = failedZoneFired.data.reclaimClose;
     stopLoss = failedZoneFired.data.failedLevel;
@@ -177,42 +152,28 @@ async function evaluateStrategies(symbol, name = symbol) {
   const target2R = direction === 'BUY' ? entry + risk * 2 : entry - risk * 2;
   const target3R = direction === 'BUY' ? entry + risk * 3 : entry - risk * 3;
 
-  // --- Staleness gate -----------------------------------------------------
   const freshness = evaluateFreshness(direction, ind.price, entry, target2R);
 
-  if (!freshness.fresh) {
-    return {
-      hasSetup: false,
-      stale: freshness.reason,
-      message: freshness.message,
-      direction,
-      grade,
-      strategiesUsed: strategyNames,
-      strategyCount: fired.length,
-      entry,
-      stopLoss,
-      target2R,
-      target3R,
-      indicators: ind,
-      freshness,
-      rawStrategyData: { zone, failedZone, fvg, crt },
-    };
-  }
-
-  return {
-    hasSetup: true,
+  const result = {
     direction,
-    grade,
+    grade: baseGrade,
     strategiesUsed: strategyNames,
     strategyCount: fired.length,
+    liquiditySweepSupport: sweepAligns,
     entry,
     stopLoss,
     target2R,
     target3R,
     indicators: ind,
     freshness,
-    rawStrategyData: { zone, failedZone, fvg, crt },
+    rawStrategyData: { zone, failedZone, fvg, liquidity },
   };
+
+  if (!freshness.fresh) {
+    return { hasSetup: false, stale: freshness.reason, message: freshness.message, ...result };
+  }
+
+  return { hasSetup: true, ...result };
 }
 
 module.exports = { evaluateStrategies, evaluateFreshness };
